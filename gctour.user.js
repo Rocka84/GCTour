@@ -41,11 +41,11 @@
 // @resource     jqui_img13    http://ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/themes/ui-lightness/images/ui-icons_ef8c08_256x240.png
 // @resource     jqui_img14    http://ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/themes/ui-lightness/images/ui-icons_ffd27a_256x240.png
 // @resource     jqui_img15    http://ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/themes/ui-lightness/images/ui-icons_ffffff_256x240.png
-// @resource     i18n_de       https://github.com/Rocka84/GCTour/raw/master/i18n/de.js
-// @resource     i18n_en       https://github.com/Rocka84/GCTour/raw/master/i18n/en.js
-// @resource     i18n_fr       https://github.com/Rocka84/GCTour/raw/master/i18n/fr.js
-// @resource     i18n_nl       https://github.com/Rocka84/GCTour/raw/master/i18n/nl.js
-// @resource     i18n_pt       https://github.com/Rocka84/GCTour/raw/master/i18n/pt.js
+// @resource     i18n_de       https://github.com/Rocka84/GCTour/raw/master/i18n/de.json
+// @resource     i18n_en       https://github.com/Rocka84/GCTour/raw/master/i18n/en.json
+// @resource     i18n_fr       https://github.com/Rocka84/GCTour/raw/master/i18n/fr.json
+// @resource     i18n_nl       https://github.com/Rocka84/GCTour/raw/master/i18n/nl.json
+// @resource     i18n_pt       https://github.com/Rocka84/GCTour/raw/master/i18n/pt.json
 // @license      GPL version 3 or any later version; http://www.gnu.org/copyleft/gpl.html
 // ==/UserScript==
 
