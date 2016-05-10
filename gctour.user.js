@@ -1,15 +1,15 @@
 // ==UserScript==
 // @name         GC Tour
-// @namespace    madd.in
-// @version      2.3  revision 8
+// @namespace    gc.rocka84
+// @version      3.1
 // @build        14271
 // @description  Cachetour planing made easy. Pick some Caches, sort the list and print it out. Free for all users of geocaching.com!
 // @run-at       document-end
 // @include      http*://www.geocaching.com/*
 // @include      http://gctour*.madd.in/map/show*#gui
 // @exclude      /^https?://www\.geocaching\.com/(login|about|articles)/
-// @updateURL    https://gist.github.com/DieBatzen/5814dc7368c1034470c8/raw/gctour.version.js
-// @downloadURL  https://gist.github.com/DieBatzen/5814dc7368c1034470c8/raw/gctour.user.js
+// @updateURL    https://github.com/Rocka84/GCTour/raw/master/gctour.version.js
+// @downloadURL  https://github.com/Rocka84/GCTour/raw/master/gctour.user.js
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        GM_deleteValue
@@ -20,12 +20,11 @@
 // @grant        GM_getResourceText
 // @grant        GM_getResourceURL
 // @grant        unsafeWindow
-// @copyright    2008 - 2014 Martin Georgi
-// @author       madd.in
-// @co-developer jens
+// @author       madd.in, DieBatzen, Rocka84
 // @icon         http://www.madd.in/geocaching/gm/gctourextension/icon.png
 // @require      http://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js
 // @require      http://ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/jquery-ui.min.js
+// @require      https://raw.githubusercontent.com/eligrey/FileSaver.js/master/FileSaver.min.js
 // @resource     jqUI_CSS      http://code.jquery.com/ui/1.10.3/themes/ui-lightness/jquery-ui.css
 // @resource     jqui_img01    http://ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/themes/ui-lightness/images/animated-overlay.gif
 // @resource     jqui_img02    http://ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/themes/ui-lightness/images/ui-bg_diagonals-thick_18_b81900_40x40.png
@@ -42,12 +41,15 @@
 // @resource     jqui_img13    http://ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/themes/ui-lightness/images/ui-icons_ef8c08_256x240.png
 // @resource     jqui_img14    http://ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/themes/ui-lightness/images/ui-icons_ffd27a_256x240.png
 // @resource     jqui_img15    http://ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/themes/ui-lightness/images/ui-icons_ffffff_256x240.png
+// @resource     i18n_de       https://github.com/Rocka84/GCTour/raw/master/i18n/de.js
+// @resource     i18n_en       https://github.com/Rocka84/GCTour/raw/master/i18n/en.js
+// @resource     i18n_fr       https://github.com/Rocka84/GCTour/raw/master/i18n/fr.js
+// @resource     i18n_nl       https://github.com/Rocka84/GCTour/raw/master/i18n/nl.js
+// @resource     i18n_pt       https://github.com/Rocka84/GCTour/raw/master/i18n/pt.js
 // @license      GPL version 3 or any later version; http://www.gnu.org/copyleft/gpl.html
 // ==/UserScript==
 
 /*****************************************************************************
- * Copyright (C) 2008, 2009, 2010, 2011, 2012, 2013 Martin Georgi
- *
  * This is free software; you can redistribute it and/or modify it under the
  * terms of the GNU General Public License as published by the Free Software
  * Foundation; either version 3 of the License, or (at your option) any later
@@ -60,8 +62,18 @@
  * To obtain a copy of the GNU General Public License, please see
  * <http://www.gnu.org/licenses>
  *****************************************************************************/
+
 /*
  * Changelog:
+ *
+ * version 3.1:
+ *   - MISC: moved language strings to dedicated json files
+ *   
+ * version 3.0:
+ *   - FIXED: send2cgeo working
+ *   - FIXED: Cache downloads in Chrome
+ *   - MISC: reimplemented some synchronus request as Promises (Chrome/Tampermonkey doesn't allow synchronous requests)
+ *   - NEW: save GPX-file directly via JS (no request to madd.in needed)
  *
  * version 2.3.14271, revision 8
  *   - FIXED: display of last 4 logs in print preview is now independent of max. number of logs
@@ -395,8 +407,8 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 
 	// globals
 	var
-	VERSION = "2.3", // will be checked once the day
-	BUILD = "14271", // will be checked once the day
+	VERSION = "3.1", // will be checked once a day
+	BUILD = "14271", // will be checked once a day
 	REVISION = "8",
 	SCRIPTID = 'gctour',
 	DEBUG_MODE = false,
@@ -639,6 +651,7 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 	}
 
 	function log_exception(ex) {
+		console.trace();
 		toLog("Exception", ex);
 	}
 
@@ -900,1254 +913,8 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 		locateMe : 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAAQCAYAAAAmlE46AAAAAXNSR0IArs4c6QAAAAZiS0dEAP8A%2FwD%2FoL2nkwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0SU1FB9kKGwgzGjNX4ooAAAJcSURBVCjPhZE%2FaBNxFMe%2Fd7mUpnfpL71LQkg9IVr%2FZCikf9SC7WAJSRRrrUPpoMEiSRdxcwnoJOggRboIWhIc2qLE4iTYDqU4WB38Q6HqItKKtZfalMsld81d8nOqBGrqg7d9P%2B%2FzHo%2FBf6o6N3oF5tYY7LwflvUMHH%2BHjWQ0Zl%2Fo5cVJprx6DfJ5oNELUAY09%2BknTPOYbR9TO7P95jGkEMA2ALQKMCwYu%2BCEtm5ydXXU7MfOOlDeBsABpgFwRcDGA%2FrGhfpgefMkKmVAWwMcVcBWAmwaUMoBDJuvD1a046AA8l8AQwXsImDqgFEA5Ni9%2BqBVbAUFUK0AhTWgugY0eEB9fXfZSGZ%2BF2xvaWmZNgwjwPN8ibMxm9TSvQwFsNvC4Qp1d8fZc0%2BnAYAjhBwslUrvOzo6fg8MDFyfmZlx9ncf8rHW6xQoAMYO6u5SQIJRNpL5%2BHejzs7ORx6Pp5JOp0Wfz%2FdWkqSdG5fDOZpxUvrERxfHzxaDbQce7DklEok8F0VRBwBCiDUyMjJenRu9amVPa2OXThR6e3tHA4GA6na7T9VybDAYnFVVtdHv9%2Ff19PSsLiwsnPmxWfzONh9tXf5l%2F6AoSiIUCr0SBOHhHmssFlsnhGwkk8muaDSaFwRhixDymeO4yuDg4Gw4HL7t9Xq1WoYDgOHh4T5N05anpqbmnU5ncmJionllZWWI5%2FlFVVVvZbPZdy6Xq6goyt63pdPptng8%2Fk2SJMPhcOREUXwhiuJiU1NTgRBCE4nEzdo8848BQ0tLS6l8Pn9E13Uiy%2FJXWZbvp1KpydrcHyPz5blPQjIYAAAAAElFTkSuQmCC',
 		closedHand : 'data:image/x-icon;base64,AAACAAEAICACAAcABQAwAQAAFgAAACgAAAAgAAAAQAAAAAEAAQAAAAAAAAEAAAAAAAAAAAAAAgAAAAAAAAAAAAAA%2F%2F%2F%2FAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD8AAAA%2FAAAAfwAAAP%2BAAAH%2FgAAB%2F8AAAH%2FAAAB%2FwAAA%2F0AAANsAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FgH%2F%2F%2F4B%2F%2F%2F8Af%2F%2F%2BAD%2F%2F%2FAA%2F%2F%2FwAH%2F%2F%2BAB%2F%2F%2FwAf%2F%2F4AH%2F%2F%2BAD%2F%2F%2FyT%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F8%3D',
 		globe : 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA8AAAAPCAYAAAA71pVKAAAAAXNSR0IArs4c6QAAAAZiS0dEAP8A%2FwD%2FoL2nkwAAAAlwSFlzAAALEQAACxEBf2RfkQAAAAd0SU1FB9oLCAk1NEFBgZsAAAAZdEVYdENvbW1lbnQAQ3JlYXRlZCB3aXRoIEdJTVBXgQ4XAAAC40lEQVQoz12ST2hbdQDHP7%2F3Xt5rmixpmj9Nm7VdQ8vGimsrqyieVNTJULwoFbrDxnAguwjDHbxKQRTvO4gVpSDiPMlEvOhgamctK%2B1WtqyzaZtmeVn%2B5yXvveT9dhDn5vf8%2BXwPX76C%2F2Xug8VzwLuqph2VYEjPa0rJsqIqXy8tzH%2FxOCseSRe%2FnNZV5ceJseTAs8dGGUtF6TUMyo0WmR2TlY0d7mQL14UQZ5cW5tceyW%2B%2F%2F%2FlsIOT%2F480XpsTURIJyo4WZy6IFE%2BCPgGWSGoiyvLHHlasbDxDixaWF%2BTUNIBoN%2FvzK85PiqXQ%2FpWKe2Mgk4dggVtslv7OF5jko3RYvzabpejL607Vbl4Dn1DMffvXRwVTs5bkTM3Rsi5qrEgxHUBUFKcG1qsTCPaQGk4SCfnp6fGTzlYMj069ltVC49%2BzxyREq5SJFJ0BiaAgpQQIIBeE57Jc8VjLrRPySqSOHODo%2BxHau9JZWt9z4aDLC8p0C6YkEnvxvxUalxDPTkwghkFKyt3%2BfdqvFYDwMcFxpOx3FMHSUYIJKo41Zd7DsLnXLwWmYCPFPlRCCgXiUtc27GD4NoF9TVcWrNttKoJ0jqBkUmjGKPp1O16Nd6jDtuti2w4FgAMuyOJSKU2g5ACXNpyj5e7vFoZnxJOnhQbZ39riaqeGg03ICfPrdDQzR5b03jlGv11m9eRcOjAL8qchu9%2FLq5i6OpwEwOpzi5Eyc%2FUKJB9UmVVuwXfYwTZNqtUpPJMXmVh7gW3X118tXxmdfvyBUVQ8HfPh1ld9W1lnPS%2BpNm1rTpmbZzA6rFGoOu2WPm5nc70sL8%2Bc1gEqheOqX6973ngdPHx7ghxtVyo6O0%2BliOx0MnyBbkfxdcLn2V6YshDj3xLdPnv74nZH08GIo3KcfSSdJxkIYhg%2Br7bJvVrh9L89urnhLqNrcE9%2F%2BN339Y%2Fqrpy4sqkbvCVStD4SQ0uvIjrslhfLZN5%2BcvvQ4%2FxDbSUHA5o8CrwAAAABJRU5ErkJggg%3D%3D'
-
-		// ohne Verwendung
-		//gcTourIcon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAPCAYAAADtc08vAAAAAXNSR0IArs4c6QAAAAZiS0dEAP8A%2FwD%2FoL2nkwAAAAlwSFlzAAAN1wAADdcBQiibeAAAAAd0SU1FB9kGHQc1Mrt%2FGBYAAAJ2SURBVCjPfdNfaJYFFMfxz3neOTWNojF9zZyEUF2EFIjrD0TxrmWRWRdu0IUVMiWyoCgIwotC8qKCsAtpEgh2sXctEoLaYANvkkLcNEm8KLqKEpeWpPlu7%2FucLrbZuuncHDic8z2%2FwzknLLLhHvrGqdfUImzL1IywJNPdWB7hOD7pG%2FfDcM9cTZQDFIf%2BhdRrXolwDhN941rzMRHaM70W4d1MX%2FZP2LYAUQ54Ondrq9esGu7x8CLYSL1mywJk3lfrNT8P9zgLRe7SgT3xsWaENzIdWzTVCHqhf2Iu0D%2FhtwhPYOccID0f4cMjj7gHpxcS55OH0Hld6pyCddiY6ZnhHtW2CC9k2rS0Ym%2FfuLcgX1bER0qI8Bke%2FKLXk42WGjpwDZdnWkbbMt0ehUTnQpcrf%2Bmd3qH7xAXbL8%2F4Jrm0db1fMh0%2BOW3wvqOajZ26MFlEuCpVy1TAUM3QmYu%2B7lhm05b1Rvon7A62zrY8UAm3bu7ULAfsba843V5xY5HpfZyr3uDa0V73Y9%2Bfs26LQVuzZTR3ORnhwIlpf0Qo5lf%2BDm6aLWnDB5nWPVT10kxp%2B9KKA1bY7yuwFkfLdOT8VY8JK8sB36KFSqPl1QLN4pA9EaqV8OmVWftc0SoHPBvhcKbv%2Bu%2BwpmulBhrojkJlalpj%2Fyn1mD%2Bk69f4%2BaNeX7vCe92ryATNCCWWZIoI2SzF5LQdm1f7vgJvT84Vjz7OU2OO39thLEPXmuU2NFNRhEqjFOf%2F5sxFl2ZKUxs7XMi0IRY%2FUzlAhNWZuuMWY83fHTx41tDNS92V6VdMPXfMj%2Fmi9my6Ez%2F9B5C7LMObmdpxJsJsDBrxP%2FYPYYz40LZq7AUAAAAASUVORK5CYII%3D',
-		//send: 'data:image/gif;base64,R0lGODlhEgASAIQDADs7OxBpAI6OjjH%2FAMLCwtHR0dbW1tvb29zc3OLi4uPj4%2Bbm5urq6uzs7O%2Fv7%2FDw8PLy8vX19fb29vf39%2Fj4%2BPn5%2Bfr6%2Bvv7%2B%2Fz8%2FP39%2Ff7%2B%2Fv%2F%2F%2FzH%2FADH%2FADH%2FADH%2FACH%2BEUNyZWF0ZWQgd2l0aCBHSU1QACH5BAEKAB8ALAAAAAASABIAAAV74CeOZGmeaAqsq8pGDqMA53oojERVEkSXAANi4ZhcBEjM5jdaMZDIzUYjZTYll4wUKsBYRQAMd2ORLk0AqtmCDLi%2FH8BmvAkMAvC0emu%2FB4ATAm6DbgN%2BJAAPE32GjYZ%2FiAyEg4%2BQTQcJDWUAfW5oBAUsH3aWQKIigyMhADs%3D',
-		//mail: 'data:image/gif,GIF89a%0F%00%0D%00%C6f%00PR%A4SS%9Dae%BAdh%B8nl%AAwv%B3uw%C2%7B%7D%CB~~%BC%7B~%CE%82%81%BE%7F%81%C8%87%87%C3%8B%8B%CA%8A%8C%D1%8C%8D%C6%90%8E%CF%90%8F%CD%8F%90%D5%8F%92%CF%91%94%D5%90%96%CF%93%96%D7%97%98%DE%97%99%D9%9D%A0%DC%A8%A7%D5%AE%B0%E4%A9%B2%EC%B3%B2%DC%B1%B3%E8%B0%B5%E3%AC%B6%E5%B7%B6%E4%B7%B9%E3%B7%B9%E4%B9%B9%E3%B9%BC%EC%BC%BE%EF%BF%BF%E8%C0%C3%F0%C4%C3%E9%C2%C4%EE%BF%C4%F8%C0%C6%F9%C7%C8%F6%C3%CB%F6%CD%CC%F3%CF%CE%F0%CE%CF%F6%CF%D0%F7%D2%D1%EF%D2%D1%F4%CB%D3%FC%D3%D3%EF%D3%D3%F8%D4%D4%F7%CF%D6%FC%D6%D5%F3%D5%D6%F4%D7%D6%F5%D7%D7%F8%D5%D8%FA%D9%D9%F4%D6%D9%FD%D9%DB%FA%DD%DD%F5%DA%DD%FE%DA%DD%FF%DD%E0%FA%DE%E0%FD%DF%E0%FC%E1%E2%FF%E4%E4%F8%E3%E4%FE%E5%E5%FF%E6%E6%FA%E6%E7%FA%E7%E7%FB%E8%E8%FA%E8%E8%FF%E9%E8%FE%EA%EB%FE%EC%EC%FF%ED%ED%FE%ED%ED%FF%ED%EE%FE%EE%EE%FE%F0%F0%FE%F0%F0%FF%F1%F1%FF%F2%F2%FE%F2%F2%FF%F2%F3%FD%F3%F3%FE%F3%F3%FF%F4%F4%FF%F5%F5%FE%F5%F5%FF%F6%F6%FE%F8%F8%FD%F9%F9%FE%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00%00!%FE%11Created%20with%20GIMP%00!%F9%04%01%0A%00%7F%00%2C%00%00%00%00%0F%00%0D%00%00%07%85%80%7F%82%83%84%85%86%83%0E%17%09%87%83%12%1E1%2B%1C%03%86%06%18%25AR2%2C5%14%84%0B%19(FVbL-%40C%26%93%7F%0F%22%3BM%5Ded47JKG%16%82%15%20%1F%23)30%2FQSUW*%02%7F%13.9%3E%3D%3C%3ANY%5C_%5EE%07%82%1BDHPTX_bcO\'%0D%00%82%108PUZ%60aI%24%0C%01%85!U%5B%5BB%1D%08%8C%11%3F6%1A%05%8C%83%0A%08%FC%0B%04%00%3B',
-		//information: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8%2F9hAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAN1wAADdcBQiibeAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAKvSURBVDiNlVNPSNNhGH6%2B7%2Fttv%2BU2nZuy0dLooEEgpa5LWVtonXaQPGQ3j52FPBQkBQVJeO64m5KkEJ7UwIUdohGVnTKsnNPNtZ%2FT7bf9%2Fn5fB204DKIH3svD%2Bz4878v7ECEEjmJgeKyDEDLCJCnGbbsLAChjq7ZlLQshEkvTE2tH%2B8kfgYHhMUopHfU1eR7dvnldPh0O0kCzFwBQ2C3hZybHp2YX9eJe%2BQHnfHJpeoLXBAaGxyiTpDc3opHIUDwqGyaHqhkwTAsA4HRIcLuccDooXs4n9YVkKmVb1tWl6QkuAQCldPTyxa7eoXhM3i6UUNGMurVQNaDsV9DgcmIoHpPVit678u7TKIBnpP%2FW3Q6XS%2F745P6dBqWsQa3otbn2YDMYI%2Fi%2BpdQ4d4MMv8eFe4%2BfVzRNv0AJISPRvohcNSwUiio0w6pVZ3srzp0J1XGFooqqYSHaF5EJISMSk6RYWzjINnf2oBlWnfPF919BCTnGb%2B7soS0cZEySYpTbdleo1Y%2BN3C40w6yr8x0n0XP21DF%2BI7eLUKsf3La7pNqddBNV3USj2wVCCAAg0OSG7GA1B0II7KtanRuJMraazSuXGt0uZAslaLoFlyyBMQoc%2Fki5qsO2OTTdAhcCoYAX2bwCytgqtS1rOZ3J2SH%2FwdNwIVDRTJRUHVwICAGUVB0VzQQ%2FFAz5vUhncrZtWctUCJFIrqR0n0dGi8%2BNf6HF54bPIyO5ktKFEAm2%2FuWtknixYOR%2F7V7p7%2Bt27KsaKpoJALBsjh%2FbCjZyxdpwd2cYs69eV3fyyvji1NN5CQA455Nr6%2BnBmbmFnsH4tRPFso6sUsLnb1sHlgNehPxe%2BDwyZuYWqmvr6Q%2Bc80ngL2FyOh0Po30RuS0cZKFWPwAgm1eQzuTs5EpKNwxz%2FFiYjuJ%2F4%2Fwb%2FIaMwXzlO4gAAAAASUVORK5CYII%3D',
-		//'gctour: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIcAAAAYCAYAAADQ1%2B6cAAAAAXNSR0IArs4c6QAAAAZiS0dEAP8A%2FwD%2FoL2nkwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0SU1FB9oICQ4hHdcOxZIAAAAdaVRYdENvbW1lbnQAAAAAAENyZWF0ZWQgd2l0aCBHSU1QZC5lBwAABpNJREFUaN7t2nuM3FUVB%2FDPb19dSgttqbYWpbQVUJHa1qICTSEwCLaQ8hwRBS9qRoqElxZ5CI0PMEKxoBJ0BL1AgnS2MRGCkDASJAjaACVCiyBuWVhaSh%2FS5%2FbB7vgHV9kMs9ttICa0800mM3N%2F59z7%2B91z7jnfc2aoo4466thZZAMVLOWcijOwEj3YF5%2FBZjyKu%2FBQvqxS39bdyDlKOdfiDfw8X9bVa7wROXwbx%2BIpXJwve6S%2BtbsBSjmzSzmH9%2Fp%2BcClnRg25aaWcRaWcnlLONfWde%2F%2BjoXqgUjCqUnBCMvgnsD5f9lgvkfG4tlovX%2FYopuFhXJF0B4QQQmMIoXFnbjyE0BRCaKib8P%2BYVioFd%2BH6rGhxKecHmNubR5RyhqAdo%2FNlPTUiyBgchQX5su5%2BjDs6paOTMCEN%2Fwv3YH6MsbOGzgTMwUx8GN14NvGdm2OMm6rk%2F4RRNZZ%2FJMZ4Xt38OxE5KgVTcCqWlHImYnk1wcyXbUQbfUaGlfgrxvXjGDk8h4nJQfbDGMxORHdpCGFmlc5peAbDETA6rfFDnIInQwhjq5b6Hs7HjTg4fT4ft9RNv5ORo1JwE6ZnRZMTb7gtX9ZeIzp8FLPyZTeUckankzwNh%2BJANOOxfNkRNRzjk1iEK3FjjLFSQ6aAm%2FDpGOPSEMKhqSI6N8b421ppCb%2FBJEyNMW6vuj4Ji2OMWd3kA0dT1fdjkuFgMpb1cpy9Utna1NbudeRKOYc1ZiqtjV7a%2FKanKvwZ27AFVzw%2By96H%2FcG6qjV%2BirYY4%2Fy%2BbirGWAwhvNzLeee9NfxOx0jy3SGE2am0bsX2AfKWsbgKn8deeB634rYYY09KS9%2BMMb5YpXcmJsUYL00y1%2BEirIgxfm1XdQ7oSO%2BD%2F5tS1p9jSucmZzU3OHr5JpV0ipdg9SnjLMcXcFNW1JkcqXXNFjfu2WwBjq%2FiGcfikB3dWIzxgaQzBtNR2IH85kSGB0poJ%2BMh3IszsQqH40eYHkI4G0diSA31%2FVJKlGQOwe24c1eOHN34bPrcXMrJcMoDr%2Fj1lJGGjd7D5uGDXD55pFva2mXNDZZ0V9zXmJmKYeisFFyBK%2FdpNXhrt7VV8x%2BMTcmxBoqPYyNeeK8eOlU5d6RodHGvS8%2BHEB7G33HyTkz5yxjj1bt6WlmIKysFM9vavYz9k1EerHB%2FU4OFidA9dfp4M9raPfHHlz134ljHZEXPVgqG4ysYDI2ZkVXzN2J7b54RQsink9gXNqK7Fjd5F5iUCPWRNSLQshDC7SmaDBT37w59jnmpTL1nxn4OPGiY7%2BTLnsmXffGAu8WsaCNuSPl5FB7b0u049FQKcvhcOulgw3bFqvmfx7AQQm9n%2BAg%2BVuN1BK7Hq9i7RiXybrA%2FVsYY1%2FZxfUl%2F1VaNFkDXLk9Is6KuSsFU%2FHjPJt%2BaOMKUnoJpGddgYVbUg3OwLSt6spTThYvxddyWGmTgxfU2D28xv%2BpUdoQQ%2FobzcFkau6GP0H8ZDsB9WJp0vttPqshSGbw6xrhlB8%2B9CiNCCK19yH4QaxKxHVTj%2BuDdskOaFW3Oii7EqNe7zN%2FabX8swNJKwWzMRUelYNLp47V8ah9Ppz7C%2FxxjzRZvLF5t7sg7bKix5hxcFEKY0Y%2BhD8PVmBNj7MHluCSEcHw%2Fz%2FJ9PI6WATz3IqzH2TXWHpRSyv0pik6qoX%2FEbtkhrcbCY3117BCXTxlpaENmzADmrPzjDZ17tZg4ZrCurGhrDQOchV%2FhZvwixtiRxvfBN5JjzI0xzuulc2mqJH6SuqGvpfGDUjl6AnIxxidqrPeOPkcI4YwU7S7AnTHGbSGEfVODbELq2VyQONaJMcbFIYSW1LS7KnVZjw8hvJl6K0%2Fv8pGjGqc96PZlG5x7b4eN67fp7Ee065WNFv1znTXjhlowZrC78aU%2Bys47Ez%2BZgBdCCKtCCMvxOmbhpN6OkXSuS2XxdLwaQlgRQliVuqaDMKWWY%2FRT%2Bt6NL6f0ti6E8CpeSn2ao1NpPA%2B%2Fx6IQwmtYi%2BPws3rkeLsB1tzWzrih5kz9gGtWdulobbShqUHD1m5bVnbZvmy95k1vum%2FWWJ0tjWZiHS7JilbvoKzcI6WkFnT0QxJ76%2BydSGUP2qt%2FU9nJsjZLcw3ra%2F203nhv%2FW3hpfe4cnp%2FOkelIMMInJwV3VopaMXatnYjEllswr%2BxIl9%2BO31UCpoxMitaoY5d1jmG4MJEIn%2BXTs7QrOj8%2BtbV04pKwTR8CMuzor%2FUt6yOOuqoo46%2B8R8zB2ZOLT0sIgAAAABJRU5ErkJggg%3D%3D',
-
 	};
 	
-	// translations
-	$.gctour.i18n.de = {
-		'name' : 'Deutsch',
-		'language' : 'Sprache',
-		'addToTour' : 'Zur Tour hinzufügen',
-		'addToCurrentTour' : 'zur <b>aktuellen</b> Tour hinzufügen',
-		'addToNewTour' : 'zu <b>neuer</b> Tour hinzufügen',
-		'directPrint' : 'Drucke diesen Geocache',
-		'moveGeocache' : 'Verschiebe die Koordinaten',
-		'movedGeocache' : 'Die Koordinaten zu diesem Geocache wurden verschoben!',
-		'moveGeocacheHelp' : 'Hier hast du die Möglichkeit die original Koordinaten dieses Geocaches durch Neue zu ersetzen. Diese werden dann in der Druckansicht wie auch in der GPX verwendet. Praktisch bei der Lösung eines Mystery.',
-		'originalCoordinates' : 'Original Koordinaten',
-		'newCoordinates' : "Neue Koordinaten",
-		'showCaches' : '<b>Angezeigte</b> Caches:',
-		'markedCaches' : '<b>Markierte</b> Caches:',
-		'removeTourDialog' : "Soll die Tour wirklich gelöscht werden?",
-		'logYourVisit' : "Logge deinen Besuch",
-		'removeFromList' : "aus Liste entfernen",
-		'emptyList' : 'Die Liste ist leer.',
-		'notLogedIn' : 'Sie müssen angemeldet sein, bitte einloggen ...',
-		'months' : ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"],
-		'printviewTitle' : 'GCTour - http://gctour.madd.in',
-		'pleaseWait' : 'Bitte warten - Daten werden geladen...',
-		'newList' : 'neue Tour erstellen',
-		'sendToGps' : 'an GPS senden',
-		'makeMap' : 'Auf Karte anzeigen',
-		'makeMapWait' : 'Verfügbarkeit der Karte wird getestet.',
-		'printview' : 'Druckansicht',
-		'print' : 'Druck starten',
-		'downloadGpx' : 'GPX downloaden',
-		'send2cgeo' : 'an c:geo senden',
-		'showSettings' : 'Einstellungen anzeigen',
-		'settings_caption' : 'Einstellungen',
-		'settingsPrintMinimal' : 'Minimierte Druckansicht',
-		'settingsLogCount' : 'Anzahl der Logs in Druckansicht',
-		'settingsLogCountNone' : 'keine<br/>',
-		'settingsLogCountAll' : 'alle<br/>',
-		'settingsLogCountShow' : 'anzeigen',
-		'settingsEditDescription' : 'Beschreibung editierbar',
-		'settingsRemoveImages' : 'Bilder bei Klick entfernen',
-		'settingsShowSpoiler' : 'Spoiler Bilder anzeigen',
-		'settingsAdditionalWaypoints' : 'Additional Waypoints anzeigen',
-		'settingsLoggedVisits' : 'Log-Counter anzeigen',
-		'settingsAttributes' : 'Attributes anzeigen',
-		'settingsDecryptHints' : 'Hints entschl&uuml;sseln',
-		'settingsSendToGPS' : 'An GPS senden',
-		'settingsShowGPX' : 'GPX anzeigen',
-		'settingsDownladGPX' : 'GPX download<br/>',
-		'settingsGPX' : 'GPX Einstellungen',
-		'settingsGPXHtml' : 'Beschreibung mit HTML',
-		'settingsUploadTour' : 'Tour upload',
-		'settingsGPXStripGC' : 'Entferne "GC" in GC-Code',
-		'settingsGPXWpts' : 'Additional-Waypoints exportieren',
-		'settingsGPXAttributestoLog' : 'Cache-Attribute als ersten Logeintrag',
-		'settingsFontSize' : 'Schriftgr&ouml;&szlig;e:',
-		'settingsPageBreak' : 'Seitenumbruch nach Geocache:',
-		'settingsPageBreakAfterMap' : 'Seitenumbruch nach Übersichtskarte:',
-		'settingsFrontPage' : 'Titelseite:',
-		'settingsOutlineMap' : 'Übersichtskarte für alle Caches:',
-		'settingsOutlineMapSinge' : 'Übersichtskarte für jeden Cache:',
-		'settingsDecryptHintsDesc' : 'Die Hinweise werden schon mittels Rot13 auf der Druckansicht entschlüsselt.',
-		'settingsPrintMinimalDesc' : 'Beinhaltet nur noch Hint und Spoiler zu jedem Geocache.',
-		'settingsEditDescriptionDesc' : 'Die Beschreibung lässt sich komplett nach eigenem Belieben anpassen.',
-		'settingsShowSpoilerDesc' : 'Es werden die Spoiler mit gedruckt.',
-		'settingsAdditionalWaypointsDesc' : 'In der Druckansicht findet sich eine Tabelle mit allen "Zusätzlichen Wegpunkten".',
-		'settingsLoggedVisitsDesc' : 'Eine Übersicht wie oft der Geocache schon gefunden wurde.',
-		'settingsPageBreakDesc' : 'Es wird nach jedem Geocache eine neue Seite angefangen. Sieht man erst beim Ausdrucken.',
-		'settingsPageBreakAfterMapDesc' : 'Es wird ein Seitenumbruch nach der Übersichtseite gemacht, um das Deckblatt abzuheben.',
-		'settingsFrontPageDesc' : 'Es wird eine Titelseite erzeugt mit allen Geocaches, Index und Platz für Notizen.',
-		'settingsOutlineMapDesc' : 'Auf der Titelseite wird eine Karte mit allen Geocaches in der Tour angezeigt.',
-		'settingsOutlineMapSingeDesc' : 'Unter jedem Geocache erscheint eine Karte mit seinen "Additional Waypoints"',
-		'settingsGPXHtmlDesc' : 'Manche Geräte/Programme haben Probleme beim Anzeigen eines Geocaches mit HTML-Formatierung. Wenn du nur noch kryptische Beschreibungen siehst, dann Bitte diese Option deaktivieren.',
-		'settingsGPXWptsDesc' : 'Additional-Waypoints werden als extra Wegpunkt mit in die GPX exportiert. Damit hat man jeden Parkplatz direkt auf dem Gerät.',
-		'settingsGPXStripGCDesc' : 'Alte Geräte haben Probleme mit Wegpunkten deren Name länger als 8 Zeichen sind. Wenn du so ein altes Garmin hast, dann bitte diese Option anwählen!',
-		'settingsGPXAttributestoLogDesc' : 'Cache Attribute werden zusätzlich als ersten Log eingetragen.',
-		'settings_map' : 'Karten',
-		'settings_map_geocacheid' : 'Geocache Code anzeigen',
-		'settings_map_geocacheindex' : 'Geocache Index anzeigen',
-		'settings_map_geocachename' : 'Geocache Namen anzeigen',
-		'settings_map_awpts' : 'Additional Waypoints anzeigen',
-		'settings_map_awpt_name' : 'Additional Waypoints Namen einblenden',
-		'settings_map_awpt_lookup' : 'Additional Waypoints Lookup einblenden',
-		'settings_map_owpts' : 'Eigene Wegpunkte einblenden',
-		'settings_map_owpt_name' : 'Eigener Wegpunkt Name anzeigen',
-		'settings_map_gcde' : 'Karte von geocaching.de einblenden',
-		'settings_map_geocacheidDesc' : 'Es wird immer der GCCode (z.B. GC0815) mit auf der Karte angezeigt.',
-		'settings_map_geocacheindexDesc' : 'Die Postion innerhalb der Tour wird mit angezeigt.',
-		'settings_map_geocachenameDesc' : 'Der Name eines Geocache wird zusätzlich mit eingeblendet.',
-		'settings_map_awptsDesc' : 'Wenn aktiviert, dann werden die "Additional Waypoints" eines Geocaches mit angezeigt.',
-		'settings_map_awpt_nameDesc' : 'Der Name eines "Additional Waypoints" wir mit angezeigt.',
-		'settings_map_awpt_lookupDesc' : 'Der Lookupcode eines "Additional Waypoints" wir mit angezeigt.',
-		'settings_map_owptsDesc' : 'Wenn du "Eigene Wegpunkte" mit in deiner Tour hast, so werden diese auch mit auf der Karte angezeigt.',
-		'settings_map_owpt_nameDesc' : 'Zusätzlich kann man sich noch den Namen zu jedem Wegpunkt anzeigen lassen.',
-		'settings_map_gcdeDesc' : 'Wenn das aktiviert wurde, werden automatisch zusätzliche zu deiner Tour, die Karte von Geocaching.de mit eingeblendet.',
-		'loadTour' : 'Tour laden:<br/>',
-		'openTour' : 'eine Tour laden',
-		'load' : 'laden',
-		'removeTour' : 'diese Tour löschen',
-		'deleteCoordinates' : 'Koordinaten löschen',
-		'copyTour' : 'Tour kopieren',
-		'copy' : 'Kopie',
-		'newTourDialog' : 'Bitte gib einen Namen für die neue Tour ein ...',
-		'rename' : 'umbenennen',
-		'upload' : 'Tour hochladen',
-		'onlineTour' : 'Tour runterladen',
-		'webcodeDownloadHelp' : 'Bitte gib hier den Webcode an, den du von deinem Freund bekommen hast und drücke dann auf "Tour runterladen".',
-		'webcodeDownloadButton' : 'Tour runterladen',
-		'findMe' : 'Finde mich!',
-		'webcodeerror' : 'Der angegebene Webcode existiert leider nicht!',
-		'tourUploaded1' : 'Die Tour wurde erfolgreich hochgeladen!\nDer Webcode lautet:\n      ',
-		'tourUploaded2' : '\nDie Onlineabfrage kann unter http://gctour.madd.in geschehen.\nWichtig: Bitte Webcode notieren um die Tour wieder aufzurufen!!',
-		'webcodePrompt' : 'Tour download\nBitte gib einen gültigen Webcode ein,\num die dazu passende Tour zu laden:',
-		'webcodesuccess' : ' wurde erfolgreich geladen!',
-		'webcodeOld' : '\n    !!ACHTUNG!!\nEs handelt sich bei diesem Webcode um eine alte Tour. Um sie auch mit den Vorzügen von GCTour 2.0 nutzen zu können musst du sie bitte jetzt erneut hochladen.',
-		'printviewCache' : 'Geocache',
-		'printviewFound' : 'Fund',
-		'printviewNote' : 'Notiz',
-		'printviewMarker' : "Eigene Wegpunkte",
-		'printviewAdditionalWaypoint' : "Zusätzliche Wegpunkte",
-		'printviewRemoveMap' : "Karte entfernen",
-		'printviewZoomMap' : "Diese Karte in einem neuem Tab öffen.",
-		'settingsMapType' : 'Standard Kartentyp',
-		'settingsMapSize' : 'Standard Kartengröße',
-		'addOwnWaypoint' : 'eigenen Wegpunkt hinzufügen',
-		"markerCoordinate" : "Koordinaten",
-		"markerContent" : "Inhalt",
-		"markerType" : "Typ",
-		"markerContentHint" : "wird in Druckansicht angezeigt",
-		"markerCaption" : "Beschriftung",
-		"autoTour" : "autoTour",
-		"autoTourWait" : "Bitte warten - autoTour wird erzeugt!",
-		"autoTourRadius" : "Radius",
-		"autoTourCenter" : "Mittelpunkt",
-		"autoTourHelp" : "Koordinaten oder Adresse:<i>N51° 12.123 E010° 23.123</i> oder <i>40.597 -75.542</i> oder <i>Berlin Ernst-Reuter-Platz</i>",
-		"autoTourRefresh" : "Berechne eine autoTour mit diesen Werten!",
-		"autoTourCacheCounts" : "Geschätzte <i>gesamt</i> Anzahl Caches in dieser Region:",
-		"autoTourDuration" : "Geschätzte Dauer der Erzeugung dieser autoTour:",
-		"autoTourFilter" : {
-			"type" : "Typ",
-			"size" : "Größe",
-			"difficulty" : "Schwierigkeit",
-			"terrain" : "Gelände",
-			"special" : "Spezial"
-		},
-		"save" : "Speichern",
-		"cancel" : "Abbrechen",
-		"close" : "Schließen",
-		'install' : 'Installieren',
-		"edit" : "bearbeiten",
-		"example" : "Beispiel:",
-		"exampleCoords" : "<i>N51° 12.123 E010° 23.123</i> oder <i>40.597 -75.542</i>",
-		"dontPrintHint" : "<b>Hinweis:</b><br/>Elemente in einem solchen Kasten werden <u>nicht</u> mit gedruckt!",
-		"SCRIPT_ERROR" : "Es sieht so aus, als blockierst du benötigte Javascript-Quellen (z.B. durch das Firefox-Addon NoScript). Bitte lasse 'geocaching.com' dauerhaft zu, um GCTour zu nutzen!",
-		'mapTypes' :
-		[{
-				"caption" : "Google Karte",
-				"value" : "roadmap"
-			}, {
-				"caption" : "Google Satellit",
-				"value" : "satellite"
-			}, {
-				"caption" : "Google Hybrid",
-				"value" : "hybrid"
-			}, {
-				"caption" : "Google Gelände",
-				"value" : "terrain"
-			}, {
-				"caption" : "Topo Deutschland",
-				"value" : "oda"
-			}, {
-				"caption" : "OSM Mapnik",
-				"value" : "mapnik"
-			}, {
-				"caption" : "OSM DE",
-				"value" : "osmde"
-			}, {
-				"caption" : "OSM Fahrrad",
-				"value" : "osmaC"
-			}, {
-				"caption" : "OSM ÖPNV",
-				"value" : "osmaP"
-			}
-		],
-		'updateDialog' : "<div><img src='http://gctour-spot.appspot.com/i/signal_antenna.gif' style='float:right'><p>Es ist eine neue Version von &nbsp;&nbsp;&nbsp;<a target='_blank' href='http://gctour.madd.in'><b>GCTour</b></a>&nbsp;&nbsp;&nbsp;verf&uuml;gbar.</p><p>Du benutzt die Version <b>###VERSION_OLD###</b>. Die aktuellste Version ist <b>###VERSION_NEW###</b></p><p><b>Versions Historie:</b></p><div class='dialogHistory'>###VERSION_HISTORY###</div><div class='dialogFooter'></div>",
-		'updateCurrently' : 'GCTour Version ' + VERSION + '.' + BUILD + ' ist aktuell!',
-
-		// redesign begin 05.2012
-		'settings' : {
-			'gpx' : {
-				'maxLogCount' : 'max. Anzahl der Logs'
-			}
-		},
-		'autoTour' : {
-			'title' : 'autoTour',
-			'wait' : 'Bitte warten - autoTour wird erzeugt!',
-			'radius' : 'Radius',
-			'center' : 'Mittelpunkt',
-			'help' : 'Koordinaten oder Adresse: <i>N51° 12.123 E010° 23.123</i> oder <i>40.597 -75.542</i> oder <i>Berlin Ernst-Reuter-Platz</i>',
-			'refresh' : 'Berechne eine autoTour mit diesen Werten!',
-			'cacheCounts' : 'Geschätzte <i>gesamt</i> Anzahl Caches in dieser Region:',
-			'duration' : 'Geschätzte Dauer der Erzeugung dieser autoTour:',
-			'filter' : {
-				'type' : 'Typ',
-				'size' : 'Größe',
-				'difficulty' : 'Schwierigkeit',
-				'terrain' : 'Gelände',
-				'special' : {
-					'caption' : 'Spezial',
-					'pm' : {
-						'not' : 'Ist kein PM Cache',
-						'ignore' : 'Ist PM oder kein PM Cache',
-						'only' : 'Ist PM Cache'
-					},
-					'notfound' : 'Nicht gefunden',
-					'isActive' : 'Aktiv',
-					'minFavorites' : 'Mindestzahl Favoriten'
-				}
-			}
-		},
-		'dlg' : {
-			'sendMessage' : {
-				'caption' : 'Sende eine Nachricht an den Entwickler.',
-				'content' : 'Du hast einen Fehler gefunden? Du möchtest eine Verbesserung vorschlagen oder deine Meinung zu GCTour loswerden? Dann schreibe mir eine <b>Nachricht:</b>',
-				'submit' : 'Schicke diese Nachricht ab!',
-				'response' : 'Deine Mail Adresse: '
-				// old: 'sendMessageTitle', 'sendMessage', 'sendMessageSubmit'
-			},
-			'newVersion' : {
-				'caption' : 'Neue Version verfügbar',
-				'content' : 'Es gibt eine neue Version von GCTour.\nZum update gehen? \n\n' //ohne Anwendung
-				// old: 'newVersionDialog', 'newVersionTitle'
-			},
-			'error' : {
-				'content' : '<img src="http://forums.groundspeak.com/GC/public/style_emoticons/default/sad.gif">&nbsp;&nbsp;Es tut mir leid, aber es ist ein Fehler aufgetreten!<br/>' +
-				'Versuch es einfach noch einmal oder suche nach einem <a href="#" id="gctour_update_error_dialog">Update</a>!<br/><br/>' +
-				'Wenn dieser Fehler öfter auftritt, dann schicke bitte einen Fehlerbericht.<br/>' +
-				'<u>Notizen</u><br/>' +
-				'<textarea id="gctour_error_note" rows="4" style="width:99%"></textarea>',
-				'send' : 'Fehlerbericht abschicken'
-				// old: 'ERROR_DIALOG', 'ERROR_DIALOG_SEND'
-			}
-		},
-		'notifications' : {
-			'addgeocache' : {
-				'success' : {
-					'caption' : '{0} wurde hinzugefügt!',
-					'content' : '<b>{0}</b> enthält jetzt auch <b>{1}</b>.'
-				},
-				'contains' : {
-					'caption' : '{0} wurde <i>nicht</i> hinzugefügt!',
-					'content' : '<b>{0}</b> enthält <b>{1}</b> schon.'
-				}
-			}
-		},
-		'units' : {
-			'km' : 'Kilometer',
-			'mi' : 'Meilen'
-		}
-
-	};
-	$.gctour.i18n.en = {
-		'name' : 'English',
-		'language' : 'Language',
-		'addToTour' : 'Add to Tour',
-		'addToCurrentTour' : "to <b>curent</b> tour",
-		'addToNewTour' : 'to <b>new</b> tour',
-		'directPrint' : 'Print this geocache',
-		'moveGeocache' : 'Move the coordinates',
-		'movedGeocache' : 'The coordinates to this geocaches are moved.',
-		'moveGeocacheHelp' : 'You have the chance to change the original coordinates of this geocache. These will than used in the printview and also in the GPX file. This is quiet handy if you solve a mystery.',
-		'originalCoordinates' : 'Original coordinates',
-		'newCoordinates' : "New coordinates",
-		'showCaches' : 'Add <b>shown</b> geocaches:',
-		'markedCaches' : 'Add <b>marked</b> geocaches:',
-		'removeTourDialog' : "Are you sure to remove this tour?",
-		'logYourVisit' : "Log your visit",
-		'removeFromList' : "Remove from list",
-		'emptyList' : 'The list is empty.',
-		'notLogedIn' : 'You need to be logged, please login in ...',
-		'months' : ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"],
-		'printviewTitle' : 'GCTour - http://gctour.madd.in',
-		'pleaseWait' : 'Please wait - loading data ...',
-		'newList' : 'New Tour',
-		'sendToGps' : 'Send to GPS',
-		'makeMap' : 'View on map',
-		'makeMapWait' : 'Testing availablity of this map',
-		'printview' : 'Printview',
-		'print' : 'Start printing',
-		'downloadGpx' : 'Download GPX',
-		'send2cgeo' : 'Send to c:geo',
-		'showSettings' : 'Show settings',
-		'settings_caption' : 'Settings',
-		'settingsPrintMinimal' : 'Minimal printview',
-		'settingsLogCount' : 'Number of logs in printview',
-		'settingsLogCountNone' : 'none<br/>',
-		'settingsLogCountAll' : 'all<br/>',
-		'settingsLogCountShow' : 'show',
-		'settingsEditDescription' : 'Description editable',
-		'settingsRemoveImages' : 'Remove images on click',
-		'settingsShowSpoiler' : 'Display spoiler',
-		'settingsAdditionalWaypoints' : 'Show additional waypoints',
-		'settingsLoggedVisits' : 'Show log counter',
-		'settingsAttributes' : 'Show attributes',
-		'settingsDecryptHints' : 'Decrypt hints',
-		'settingsSendToGPS' : 'Send to GPS',
-		'settingsShowGPX' : 'Show the GPX-File',
-		'settingsDownladGPX' : 'GPX download<br/>',
-		'settingsGPX' : 'GPX Settings',
-		'settingsGPXHtml' : 'Description with HTML',
-		'settingsUploadTour' : 'Tour upload',
-		'settingsGPXStripGC' : 'Strip "GC" in GC-Code',
-		'settingsGPXWpts' : 'Export additional waypoints',
-		'settingsGPXAttributestoLog' : 'Create log with cache attributes',
-		'settings_map' : 'Map',
-		'settings_map_geocacheid' : 'Show geocache id',
-		'settings_map_geocacheindex' : 'Show geocache index',
-		'settings_map_geocachename' : 'Show geocache name',
-		'settings_map_awpts' : 'Display addtional waypoints',
-		'settings_map_awpt_name' : 'Show name of the additional waypoints',
-		'settings_map_awpt_lookup' : 'Show lookup code of additional waypoints',
-		'settings_map_owpts' : 'Display own waypoints',
-		'settings_map_owpt_name' : 'Show name of own waypoints',
-		'settings_map_gcde' : 'Show map from geocaching.de',
-		'loadTour' : 'Load tour:<br/>',
-		'openTour' : 'Load a tour',
-		'load' : 'Load',
-		'removeTour' : 'Delete this tour',
-		'deleteCoordinates' : 'Delete coordinates',
-		'copyTour' : 'Copy tour',
-		'copy' : 'Copy',
-		'newTourDialog' : 'Please enter a name for the new tour ...',
-		'rename' : 'Rename',
-		'upload' : 'Upload tour',
-		'onlineTour' : 'Download Tour',
-		'webcodeDownloadHelp' : 'Please enter here the webcode you receive from your friend and click on "Download tour".',
-		'webcodeDownloadButton' : 'Download tour',
-		'findMe' : 'Find me!',
-		'webcodeerror' : 'The choosen webcode does not exist!',
-		'tourUploaded1' : 'Uploading tour was successful!\nWebcode:\n      ',
-		'tourUploaded2' : '\nYou can view the tour at http://gctour.madd.in.\nImportant: Please note webcode in order to retrieve the tour!!',
-		'settingsFontSize' : 'Fontsize:',
-		'settingsPageBreak' : 'Page break after cache:',
-		'settingsPageBreakAfterMap' : 'Page break after map:',
-		'webcodePrompt' : 'Download tour\nPlease enter a valid webcode, to load the tour:',
-		'webcodesuccess' : ' was successfully loaded!',
-		'webcodeOld' : '\n    !!ATTENTION!!\nThis webcode is connected with an old tour. To get all benefits of GCTour 2.0 you must upload this tour again.',
-		'printviewCache' : 'Geocache',
-		'printviewFound' : 'Found',
-		'printviewNote' : 'Note',
-		'printviewMarker' : "Own waypoint",
-		'printviewAdditionalWaypoint' : "Additional waypoints",
-		'printviewRemoveMap' : "remove map",
-		'printviewZoomMap' : "Open this map in a new tab.",
-		'settingsFrontPage' : 'Front page:',
-		'settingsOutlineMap' : 'Outline map for all caches:',
-		'settingsOutlineMapSinge' : 'Outline map for every cache:',
-		'settingsDecryptHintsDesc' : 'Hints will be already decrypted in the printout.',
-		'settingsPrintMinimalDesc' : 'This contains only the hint and spoiler of a geocache.',
-		'settingsEditDescriptionDesc' : 'The description can be edited in the way you want it.',
-		'settingsShowSpoilerDesc' : 'Spoiler images will be on the printout.',
-		'settingsAdditionalWaypointsDesc' : 'The printview will contain a table with all "Additional waypoints" from a geocache.',
-		'settingsLoggedVisitsDesc' : 'This will show the "Find counts" overview.',
-		'settingsPageBreakDesc' : 'After each geocache there will be a page break. Visiable after printing.',
-		'settingsPageBreakAfterMapDesc' : 'It will be a page break after the overview to seperate it from the geocaches.',
-		'settingsFrontPageDesc' : 'An overview will be generated containing the complete list of geocaches including index and space to take notes. ',
-		'settingsOutlineMapDesc' : 'The overview will contain a map with all geocaches.',
-		'settingsOutlineMapSingeDesc' : 'After each geocache a map containing the geocache and its "Additional waypoints" will be shown.',
-		'settingsGPXHtmlDesc' : 'Some programs/GPSr have problems to show geocaches when their description is HTML formated. If you only see scrabbled descriptions then please disable this option.',
-		'settingsGPXWptsDesc' : 'Additional waypoints will be exported as extra waypoint to the GPX. You will see every parking place on your unit.',
-		'settingsGPXStripGCDesc' : 'Older GPSr still have problems with waypoints having their name longer than 8 characters. Please use this option if you own such an unit.',
-		'settingsGPXAttributestoLogDesc' : 'Cache attributes are also registered as a first sign.',
-		'settings_map_geocacheidDesc' : 'The GCCode (eg. GC0815) will be shown on the map.',
-		'settings_map_geocacheindexDesc' : 'The position of each waypoint in the current tour will be shown on the map.',
-		'settings_map_geocachenameDesc' : 'The name of an geocache will be shown on the map.',
-		'settings_map_awptsDesc' : 'If enabled, additional waypoints will be shown on the map.',
-		'settings_map_awpt_nameDesc' : 'The name of the additional waypoints will be shown on the map.',
-		'settings_map_awpt_lookupDesc' : 'The lookup code of the additional waypoints will be shown on the map.',
-		'settings_map_owptsDesc' : 'Own waypoints in the current tour will be shown on the map.',
-		'settings_map_owpt_nameDesc' : 'Display the name of your own waypoints',
-		'settings_map_gcdeDesc' : 'You will see the geocaching.de map in addition to your tour.',
-		'settingsMapType' : 'Default map type',
-		'settingsMapSize' : 'Default map size',
-		'addOwnWaypoint' : 'Add own waypoint',
-		"markerCoordinate" : "Coordinates",
-		"markerContent" : "Content",
-		"markerType" : "Type",
-		"markerContentHint" : "Will be shown in the printview",
-		"markerCaption" : "Caption",
-		"save" : "Save",
-		"cancel" : "Cancel",
-		"close" : "Close",
-		'install' : 'Install',
-		"edit" : "edit",
-		"example" : "eg. ",
-		"exampleCoords" : "<i>N51° 12.123 E010° 23.123</i> or <i>40.597 -75.542</i>",
-		"dontPrintHint" : "<b>Information :</b><br/>Elements in such a box will <u>not</u> be printed!",
-		"SCRIPT_ERROR" : "It appears, that you are blocking some javascript sources (e.g. NoScript). Please allow 'geocaching.com' permanently to use GCTour!",
-		'mapTypes' :
-		[{
-				"caption" : "Google Map",
-				"value" : "roadmap"
-			}, {
-				"caption" : "Google Satellite",
-				"value" : "satellite"
-			}, {
-				"caption" : "Google Hybrid",
-				"value" : "hybrid"
-			}, {
-				"caption" : "Google Terrain",
-				"value" : "terrain"
-			}, {
-				"caption" : "Topo Germany",
-				"value" : "oda"
-			}, {
-				"caption" : "OSM Mapnik",
-				"value" : "mapnik"
-			}, {
-				"caption" : "OSM Osma",
-				"value" : "osma"
-			}, {
-				"caption" : "OSM Cycle",
-				"value" : "osmaC"
-			}, {
-				"caption" : "OSM Public Transport",
-				"value" : "osmaP"
-			}
-		],
-		'updateDialog' : "<div><img src='http://gctour-spot.appspot.com/i/signal_antenna.gif' style='float:right'><p>There is a new version of&nbsp;&nbsp;&nbsp;<a target='_blank' href='http://gctour.madd.in'><b>GCTour</b></a>&nbsp;&nbsp;&nbsp;available for installation.</p><p>You currently have version <b>###VERSION_OLD###</b> installed. The latest version is <b>###VERSION_NEW###</b></p><p><b>Version History:</b></p><div class='dialogHistory'>###VERSION_HISTORY###</div><div class='dialogFooter'></div>",
-		'updateCurrently' : 'GCTour version ' + VERSION + '.' + BUILD + ' is up to date!',
-
-		// redesign begin 05.2012
-		'settings' : {
-			'gpx' : {
-				'maxLogCount' : 'max number of logs'
-			}
-		},
-		'autoTour' : {
-			'title' : 'autoTour',
-			'wait' : 'Please wait - generating autoTour!',
-			'radius' : 'Radius',
-			'center' : 'Center',
-			'help' : 'Coordinates or address:<i>N51° 12.123 E010° 23.123</i> or <i>40.597 -75.542</i> or <i>Paris Eiffel Tower</i>',
-			'refresh' : 'Calculate an autoTour with these values!',
-			'cacheCounts' : 'Estimated <i>total number</i> of caches in this region:',
-			'duration' : 'Geschätzte Dauer der Erzeugung dieser autoTour:',
-			'filter' : {
-				'type' : 'Type',
-				'size' : 'Size',
-				'difficulty' : 'Difficulty',
-				'terrain' : 'Terrain',
-				'special' : {
-					'caption' : 'Special',
-					'pm' : {
-						'not' : 'Is not a PM cache',
-						'ignore' : 'Is PM or not PM cache',
-						'only' : 'Is PM cache'
-					},
-					'notfound' : 'I haven\'t found ',
-					'isActive' : 'is Active',
-					'minFavorites' : 'min. Favorites'
-				}
-			}
-		},
-		'dlg' : {
-			'sendMessage' : {
-				'caption' : 'Send a message to the author.',
-				'content' : 'You have found a bug? Do you have suggestion on GCTour? I would like to hear your opinion.<br/>Feel free to send me a <b>message</b>:',
-				'submit' : 'Submit this message!',
-				'response' : 'Your mail address: '
-
-				// old: 'sendMessageTitle', 'sendMessage', 'sendMessageSubmit'
-			},
-			'newVersion' : {
-				'caption' : 'new version available',
-				'content' : 'There is a new version of GCTour.\nDo you want to update? \n\n'
-				// old: 'newVersionDialog', 'newVersionTitle'
-			},
-			'error' : {
-				'content' : '<img src="http://forums.groundspeak.com/GC/public/style_emoticons/default/sad.gif">&nbsp;&nbsp;I\'m sorry but an error occurs.<br/>' +
-				'Please just try again, or look for an <a href="#" id="gctour_update_error_dialog">update</a>!<br/>' +
-				'If this error comes every time, please send this error report.<br/>' +
-				'<u>Notes</u><br/>' +
-				'<textarea id="gctour_error_note" rows="4" style="width:99%"></textarea>',
-				'send' : 'Send report'
-				// old: 'ERROR_DIALOG', 'ERROR_DIALOG_SEND'
-			}
-		},
-		'notifications' : {
-			'addgeocache' : {
-				'success' : {
-					'caption' : '{0} added successfully!',
-					'content' : '<b>{0}</b> now also contains <b>{1}</b>.'
-				},
-				'contains' : {
-					'caption' : '{0} was <i>not</i> added!',
-					'content' : '<b>{0}</b> contains <b>{1}</b>.'
-				}
-			}
-		},
-		'units' : {
-			'km' : 'Kilometer',
-			'mi' : 'Miles'
-			// old: 'kilometer', 'mile'
-		}
-
-	};
-	$.gctour.i18n.fr = {
-		'name' : 'Français',
-		'language' : 'Langue',
-		'addToTour' : 'Ajouter au Tour',
-		'addToCurrentTour' : "au tour <b>actuel</b>",
-		'addToNewTour' : 'à un <b>nouveau</b> Tour',
-		'directPrint' : 'Imprimer cette cache',
-		'moveGeocache' : 'Ajuster les coordonnées',
-		'movedGeocache' : 'Les coordonnées de cette cache ont été ajustées.',
-		'moveGeocacheHelp' : 'Vous avez la possibilité d\'ajuster les coordonnées de cette cache. Ces coordonnées seront utilisées dans la version imprimable et dans le fichier GPX . Très utile pour la saisie des solutions des caches Mystery.',
-		'originalCoordinates' : 'Coordonnées initiales',
-		'newCoordinates' : "Nouvelles coordonnées",
-		'showCaches' : 'Ajouter les caches affichées:',
-		'markedCaches' : 'Add <b>marked</b> geocaches:', // ToDo
-		'removeTourDialog' : "Etes-vous sûrs de vouloir supprimer ce Tour?",
-		'logYourVisit' : "Loguer votre visite",
-		'removeFromList' : "Supprimer de la liste",
-		'emptyList' : 'La liste est vide.',
-		'notLogedIn' : 'Vous devez être connecté, merci de vous connecter ...',
-		'months' : ["jan", "fév", "mar", "avr", "mai", "jui", "jul", "aou", "sep", "oct", "nov", "dec"],
-		'printviewTitle' : 'GCTour - http://gctour.madd.in',
-		'pleaseWait' : 'Veuillez patienter...',
-		'newList' : 'Nouveau Tour',
-		'sendToGps' : 'Transférer vers le GPS',
-		'makeMap' : 'Voir sur la carte',
-		'makeMapWait' : 'Vérification de la disponibilité et création de la carte... ',
-		'printview' : 'Générer la version imprimable',
-		'print' : 'Lancez l\'impression',
-		'downloadGpx' : 'Télécharger le GPX',
-		'send2cgeo' : 'Transférer vers le c:geo',
-		'showSettings' : 'Configurer',
-		'settings_caption' : 'Configuration',
-		'settingsPrintMinimal' : 'Version imprimable minimaliste',
-		'settingsLogCount' : 'Nombre de logs à inclure dans la version imprimable',
-		'settingsLogCountNone' : 'aucun<br/>',
-		'settingsLogCountAll' : 'tous<br/>',
-		'settingsLogCountShow' : 'afficher',
-		'settingsEditDescription' : 'Description éditable',
-		'settingsRemoveImages' : 'Suppression des images par simple clic',
-		'settingsShowSpoiler' : 'Affichage des spoilers',
-		'settingsAdditionalWaypoints' : 'Affichage des Waypoints additionnels',
-		'settingsLoggedVisits' : 'Affichage du nombre de logs',
-		'settingsAttributes' : 'Affichage des attributs',
-		'settingsDecryptHints' : 'Decryptage des hints',
-		'settingsSendToGPS' : 'Envoyer vers le GPS',
-		'settingsShowGPX' : 'Afficher le fichier GPX',
-		'settingsDownladGPX' : 'Téléchargement du fichier GPX<br/>',
-		'settingsGPX' : 'Paramètres du fichier GPX',
-		'settingsGPXHtml' : 'Description des caches au format HTML',
-		'settingsUploadTour' : 'Soumettre un Tour',
-		'settingsGPXStripGC' : 'Tronquer le préfixe "GC" dans le GC-Code',
-		'settingsGPXWpts' : 'Exporter les Waypoints additionnels',
-		'settingsGPXAttributestoLog' : 'Créer connecter avec les attributs du cache',
-		'settings_map' : 'Carte',
-		'settings_map_geocacheid' : 'Afficher l\'Id de la cache sur la carte',
-		'settings_map_geocacheindex' : 'Afficher les Waypoints des caches sur la vue générale',
-		'settings_map_geocachename' : 'Afficher le nom des caches sur la vue générale',
-		'settings_map_awpts' : 'Afficher les Waypoints',
-		'settings_map_awpt_name' : 'Afficher les noms des Waypoints additionnels',
-		'settings_map_awpt_lookup' : 'Afficher les codes lookup des Waypoints additionnels',
-		'settings_map_owpts' : 'Afficher les Waypoints personnels',
-		'settings_map_owpt_name' : 'Afficher le nom des Waypoints personnels',
-		'settings_map_gcde' : 'Afficher la carte depuis geocaching.de',
-		'loadTour' : 'Charger un Tour:<br/>',
-		'openTour' : 'Ouvrir un Tour',
-		'load' : ' : Charger',
-		'removeTour' : 'Supprimer ce Tour',
-		'deleteCoordinates' : 'Supprimer les coordonnées',
-		'copyTour' : 'Dupliquer le Tour',
-		'copy' : 'Dupliquer',
-		'newTourDialog' : 'Veuillez saisir un nom pour ce nouveau Tour ...',
-		'rename' : 'Renommer',
-		'upload' : 'Soumettre un Tour sur http://gctour.madd.in',
-		'onlineTour' : 'Télécharger un Tour',
-		'webcodeDownloadHelp' : 'Entrer ici le webcode que vous avez reçu et cliquer sur "Télécharger le Tour".',
-		'webcodeDownloadButton' : 'Télécharger le Tour',
-		'findMe' : 'Localisez-moi!',
-		'webcodeerror' : 'Le webcode saisi est inexistant!',
-		'tourUploaded1' : 'Le Tour a été correctement transféré!\nWebcode:\n      ',
-		'tourUploaded2' : '\nVous pouvez visualiser ce Tour sur http://gctour.madd.in.\nImportant: Notez bien le webcode pour une utilisation ultérieure!!',
-		'settingsFontSize' : 'Taille des caractères:',
-		'settingsPageBreak' : 'Saut de page entre les caches:',
-		'settingsPageBreakAfterMap' : 'Saut de page après la carte',
-		'webcodePrompt' : 'Téléchargement du Tour\nMerci de sasir le webcode du Tour à télécharger:',
-		'webcodesuccess' : ' a été chargé avec succès!',
-		'webcodeOld' : '\n    !!ATTENTION!!\nCe webcode corrrespond à un ancien tour. Pour profiter pleinement de GCTour 2.0 vous devez soumettre de nouveau ce Tour.',
-		'printviewCache' : 'Geocache',
-		'printviewFound' : 'Trouvée',
-		'printviewNote' : 'Note',
-		'printviewMarker' : "Waypoint personnel",
-		'printviewAdditionalWaypoint' : "Waypoints Additionnels",
-		'printviewRemoveMap' : "Supprimer la carte",
-		'printviewZoomMap' : "Ouvrir la carte dans un nouvel onglet.",
-		'settingsFrontPage' : 'Page d\'accueil',
-		'settingsOutlineMap' : 'Vue d\'ensemble de toutes les caches du Tour:',
-		'settingsOutlineMapSinge' : 'Vue d\'ensemble pour chaque cache:',
-		'settingsDecryptHintsDesc' : 'Les indices seront décryptés dans la version imprimable.',
-		'settingsPrintMinimalDesc' : 'Ne contient que l\'indice et le spoiler de la cache.',
-		'settingsEditDescriptionDesc' : 'La description est éditable comme bon vous semble.',
-		'settingsShowSpoilerDesc' : 'Les images Spoiler seront visibles dans la version imprimables.',
-		'settingsAdditionalWaypointsDesc' : 'La version imprimable contiendra un tableau avec tous les "Waypoints additionnels" de la cache.',
-		'settingsLoggedVisitsDesc' : 'Affiche un récapitulatif des "Trouvé(s)".',
-		'settingsPageBreakDesc' : 'Il y aura un saut de page après chaque cache. Visible seulement à l\'impression.',
-		'settingsPageBreakAfterMapDesc' : 'Il y aura un saut de page après la vue globale du Tour pour la séparer des pages de caches qui suivent.',
-		'settingsFrontPageDesc' : 'Une vue d\'ensemble sera générée et incluera un index avec des cases dédiées à la prise de notes. ',
-		'settingsOutlineMapDesc' : 'La vue d\'ensemble incluera une carte avec toutes les caches.',
-		'settingsOutlineMapSingeDesc' : 'Après chaque cache, une carte indiquant l\'emplacement de la cache et de ses Waypoints additionnels sera affichée.',
-		'settingsGPXHtmlDesc' : 'Certains programmes/GPSr ont des problèmes pour afficher les descriptions au format HTML. Si vous ne voyez qu\'une description tronquée de la cache, désactivez cette option.',
-		'settingsGPXWptsDesc' : 'Les Waypoints additionnels seront exportés vers votres GPS. Les parkings conseillés seront visibles sur votre GPS.',
-		'settingsGPXStripGCDesc' : 'Les anciens GPSr ont parfois des problèmes avec les noms de Waypoints de plus de 8 caractères. Dans ce cas cochez cette option.',
-		'settingsGPXAttributestoLogDesc' : 'Attributs de mise en cache sont également enregistrés comme un premier signe.',
-		'settings_map_geocacheidDesc' : 'Les codes GC (eg. GC1S5ZE) seront affichés sur la carte.',
-		'settings_map_geocacheindexDesc' : 'Les Waypoints seront affichés sur la carte.',
-		'settings_map_geocachenameDesc' : 'Les noms des caches seront affichés sur la carte.',
-		'settings_map_awptsDesc' : 'Si cette option est cochée les Waypoints associées aux caches seront affichés sur la carte.',
-		'settings_map_awpt_nameDesc' : 'Les noms des Waypoints additionnels seront affichés sur la carte.',
-		'settings_map_awpt_lookupDesc' : 'Les codes lookup des Waypoints seront affichés sur la carte.',
-		'settings_map_owptsDesc' : 'Les Waypoints personnels seront visibles sur la carte.',
-		'settings_map_owpt_nameDesc' : 'Affiche le nom des Waypoints personnels sur la carte',
-		'settings_map_gcdeDesc' : 'La carte de geocaching.de sera ajoutée à la version imprimable de votre Tour.',
-		'settingsMapType' : 'Type de carte par défaut',
-		'settingsMapSize' : 'Taille de carte par défaut',
-		'addOwnWaypoint' : 'Ajouter un Waypoint personnel',
-		"markerCoordinate" : "Coordonnées",
-		"markerContent" : "Description",
-		"markerType" : "Type",
-		"markerContentHint" : "sera visble dans la version imprimable",
-		"markerCaption" : "Légende",
-		"save" : "Enregistrer",
-		"cancel" : "Abandonner",
-		"close" : "Fermer",
-		'install' : 'Installer',
-		"edit" : "Editer",
-		"example" : "Ex. ",
-		"exampleCoords" : "<i>N51° 12.123 E010° 23.123</i> ou <i>40.597 -75.542</i>",
-		"dontPrintHint" : "<b>Information :</b><br/>Les éléménts ayant cette apparence ne seront <u>pas</u> imprimés!",
-		"SCRIPT_ERROR" : "Il semble que des javascripts ne puissent pas s'exécuter sur votre ordinateur (e.g. NoScript). Merci d'autoriser 'geocaching.com' à utiliser GCTour de manière permanente!",
-		'mapTypes' :
-		[{
-				"caption" : "Google Plan",
-				"value" : "roadmap"
-			}, {
-				"caption" : "Google Satellite",
-				"value" : "satellite"
-			}, {
-				"caption" : "Google Hybride",
-				"value" : "hybrid"
-			}, {
-				"caption" : "Google Terrain",
-				"value" : "terrain"
-			}, {
-				"caption" : "Topo Germany",
-				"value" : "oda"
-			}, {
-				"caption" : "OSM Mapnik",
-				"value" : "mapnik"
-			}, {
-				"caption" : "OSM Osma",
-				"value" : "osma"
-			}, {
-				"caption" : "OSM Cycle",
-				"value" : "osmaC"
-			}, {
-				"caption" : "OSM Public Transport",
-				"value" : "osmaP"
-			}
-		],
-		'updateDialog' : "<div><img src='http://gctour-spot.appspot.com/i/signal_antenna.gif' style='float:right'><p>Une nouvelle version de&nbsp;&nbsp;&nbsp;<a target='_blank' href='http://gctour.madd.in'><b>GCTour</b></a>&nbsp;&nbsp;&nbsp;est disponible.</p><p>Version installée : <b>###VERSION_OLD###</b>. Version la plus récente disponible: <b>###VERSION_NEW###</b></p><p><b>Historique des versions:</b></p><div class='dialogHistory'>###VERSION_HISTORY###</div><div class='dialogFooter'></div>",
-		'updateCurrently' : 'Version installée de GCTour ' + VERSION + '.' + BUILD + ' ! ',
-
-		// redesign begin 05.2012
-		'settings' : {
-			'gpx' : {
-				'maxLogCount' : 'nombre maximum de journaux'
-			}
-		},
-		'autoTour' : {
-			'title' : 'autoTour',
-			'wait' : 'Veuillez patienter pendant la génération automatique du Tour ...',
-			'radius' : 'Rayon',
-			'center' : 'Centre',
-			'help' : 'Coordonnées ou adresse:<i>N51° 12.123 E010° 23.123</i> ou <i>40.597 -75.542</i> ou <i>Paris Tour Eiffel</i>',
-			'refresh' : 'Continuer pour cette zone !',
-			'cacheCounts' : 'Estimation du<i>nombre total</i> de cache dans cette zone:',
-			'duration' : 'Durée estimée de création de cet autoTour:',
-			'filter' : {
-				'type' : 'Type',
-				'size' : 'Taille',
-				'difficulty' : 'Difficulté',
-				'terrain' : 'Terrain',
-				'special' : {
-					'caption' : 'Spécial',
-					'pm' : {
-						'not' : 'Is not a PM cache',
-						'ignore' : 'Is PM or not PM cache',
-						'only' : 'Is PM cache'
-					},
-					'notfound' : 'I haven\'t found ',
-					'isActive' : 'is Active',
-					'minFavorites' : 'min. Favorites'
-				}
-			}
-		},
-		'dlg' : {
-			'sendMessage' : {
-				'caption' : 'Contacter l\'auteur',
-				'content' : 'Vous avez trouvé un bug ? Vous avez une suggestion à propos de GCTour? Votre opinion m\'intéresse.<br/>Envoyez-moi un<b>message</b>:',
-				'submit' : 'Envoyer le message'
-				// old: 'sendMessageTitle', 'sendMessage', 'sendMessageSubmit'
-			},
-			'newVersion' : {
-				'caption' : 'Nouvelle version disponible',
-				'content' : 'Une nouvelle version de GCTour est disponible.\n Voulez-vous mettre à jour? \n\n'
-				// old: 'newVersionDialog', 'newVersionTitle'
-			},
-			'error' : {
-				'content' : '<img src="http://forums.groundspeak.com/GC/public/style_emoticons/default/sad.gif">&nbsp;&nbsp;Désolé une erreur est survenue.<br/>' +
-				'Réessayez SVP, ou vérifier les <a href="#" id="gctour_update_error_dialog">mises à jour</a> du script !<br/><br/>' +
-				'Si cette erreur se reproduit, merci d\'envoyer le rapport d\'erreur.<br/>' +
-				'<u>Notes</u><br/>' +
-				'<textarea id="gctour_error_note" rows="4" style="width:99%"></textarea>',
-				'send' : 'envoi du rapport'
-				// old: 'ERROR_DIALOG', 'ERROR_DIALOG_SEND'
-			}
-		},
-		'notifications' : {
-			'addgeocache' : {
-				'success' : {
-					'caption' : '{0} a été ajouté',
-					'content' : '<b>{0}</b> contient désormais aussi <b>{1}</b>.'
-				},
-				'contains' : {
-					'caption' : '{0} n\'a pas été ajouté',
-					'content' : '<b>{0}</b> contient <b>{1}</b>.'
-				}
-			}
-		},
-		'units' : {
-			'km' : 'Kilomètre',
-			'mi' : 'Miles'
-			// old: 'kilometer', 'mile'
-		}
-
-	};
-	$.gctour.i18n.nl = {
-		'name' : 'Nederlands',
-		'language' : 'Taal',
-		'addToTour' : 'Aan toer toevoegen',
-		'addToCurrentTour' : "aan <b>huidige</b> toer",
-		'addToNewTour' : 'aan <b>nieuwe</b> toer',
-		'directPrint' : 'Deze geocache afdrukken',
-		'moveGeocache' : 'Verplaats de coördinaten',
-		'movedGeocache' : 'De coördinaten voor deze geocache zijn verplaatst.',
-		'moveGeocacheHelp' : 'Je kan de originele coördinaten van deze geocache verplaatsen. Deze worden dan gebruikt in de afdrukweergave en in het GPX bestand. Dit kan handig zijn bij een opgeloste mystery.',
-		'originalCoordinates' : 'Originele coördinaten',
-		'newCoordinates' : "Nieuwe coördinaten",
-		'showCaches' : 'Getoonde geocaches toevoegen:',
-		'markedCaches' : 'Add <b>marked</b> geocaches:', // ToDo
-		'removeTourDialog' : "Weet je zeker dat je deze toer wil verwijderen?",
-		'logYourVisit' : "Log je bezoek",
-		'removeFromList' : "Van lijst verwijderen",
-		'emptyList' : 'De lijst is leeg.',
-		'notLogedIn' : 'U dient ingelogd te zijn, gelieve in te loggen ...',
-		'months' : ["januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober", "november", "december"],
-		'printviewTitle' : 'GCTour - http://gctour.madd.in',
-		'pleaseWait' : 'Even geduld  - gegevens worden geladen ...',
-		'newList' : 'Nieuwe toer',
-		'sendToGps' : 'Naar GPS versturen',
-		'makeMap' : 'Bekijk op de kaart',
-		'makeMapWait' : 'Beschikbaarheid kaart wordt getest',
-		'printview' : 'Afdrukweergave',
-		'print' : 'Begin met afdrukken',
-		'downloadGpx' : 'GPX downloaden',
-		'send2cgeo' : 'Naar c:geo versturen',
-		'showSettings' : 'Instellingen tonen',
-		'settings_caption' : 'Instellingen',
-		'settingsPrintMinimal' : 'Minimale afdrukweergave',
-		'settingsLogCount' : 'Aantal logs in afdrukweergave',
-		'settingsLogCountNone' : 'geen<br/>',
-		'settingsLogCountAll' : 'alle<br/>',
-		'settingsLogCountShow' : 'tonen',
-		'settingsEditDescription' : 'Beschrijving wijzigbaar',
-		'settingsRemoveImages' : 'Verwijder afbeeldingen met een klik',
-		'settingsShowSpoiler' : 'Spoiler tonen',
-		'settingsAdditionalWaypoints' : 'Additional waypoints tonen',
-		'settingsLoggedVisits' : 'Log teller tonen',
-		'settingsAttributes' : 'Attributen tonen',
-		'settingsDecryptHints' : 'Decodeer hints',
-		'settingsSendToGPS' : 'Naar GPS versturen',
-		'settingsShowGPX' : 'GPX bestand tonen',
-		'settingsDownladGPX' : 'GPX downloaden<br/>',
-		'settingsGPX' : 'GPX instellingen',
-		'settingsGPXHtml' : 'Beschrijving met HTML',
-		'settingsUploadTour' : 'Toer uploaden',
-		'settingsGPXStripGC' : '"GC" in GC-Code verwijderen',
-		'settingsGPXWpts' : 'Exporteer additional waypoints',
-		'settingsGPXAttributestoLog' : 'Maken te loggen met cache attributen',
-		'settings_map' : 'Kaart',
-		'settings_map_geocacheid' : 'Toon geocache id',
-		'settings_map_geocacheindex' : 'Toon geocache index',
-		'settings_map_geocachename' : 'Toon geocache naam',
-		'settings_map_awpts' : 'Toon additional waypoints',
-		'settings_map_awpt_name' : 'Toon naam additional waypoints',
-		'settings_map_awpt_lookup' : 'Toon lookup code additional waypoints',
-		'settings_map_owpts' : 'Toon eigen waypoints',
-		'settings_map_owpt_name' : 'Toon naam eigen waypoints',
-		'settings_map_gcde' : 'Toon kaart van geocaching.de',
-		'loadTour' : 'Laad toer:<br/>',
-		'openTour' : 'Een toer laden',
-		'load' : 'Laden',
-		'removeTour' : 'Deze toer wissen',
-		'deleteCoordinates' : 'Verwijderen coördinaten',
-		'copyTour' : 'Toer kopiëren',
-		'copy' : 'Kopiëren',
-		'newTourDialog' : 'Gelieve de naam van de nieuwe toer in te vullen ...',
-		'rename' : 'Hernoem',
-		'upload' : 'Toer uploaden',
-		'onlineTour' : 'Toer downloaden',
-		'webcodeDownloadHelp' : 'Gelieve de ontvangen webcode in te vullen en klik op "Toer downloaden".',
-		'webcodeDownloadButton' : 'Download toer',
-		'findMe' : 'Vind me!',
-		'webcodeerror' : 'De gekozen webcode bestaat niet!',
-		'tourUploaded1' : 'Uploaden toer was succesvol!\nwebcode:\n      ',
-		'tourUploaded2' : '\nJe kan de toer bekijken op http://gctour.madd.in.\nBelangrijk gelieve de webcode te noteren om deze later op te kunnen opvragen!!',
-		'settingsFontSize' : 'Fontgrootte:',
-		'settingsPageBreak' : 'Pagina einde achter cache:',
-		'settingsPageBreakAfterMap' : 'Pagina einde achter kaart:',
-		'webcodePrompt' : 'Toer downloaden.\nGelieve een geldige webcode in te vullen om een toer te laden:',
-		'webcodesuccess' : ' is succesvol geladen!',
-		'webcodeOld' : '\n    !!AANDACHT!!\nDeze webcode bevat een oude toer. Om alle voordelen van GCTour 2.0 te benutten moet deze toer opnieuw worden geüpload worden.',
-		'printviewCache' : 'geocache',
-		'printviewFound' : 'gevonden',
-		'printviewNote' : 'note',
-		'printviewMarker' : "eigen waypoint",
-		'printviewAdditionalWaypoint' : "additional waypoints",
-		'printviewRemoveMap' : "kaart verwijderen",
-		'printviewZoomMap' : "Open deze kaart in een nieuwe tab.",
-		'settingsFrontPage' : 'Frontpagina:',
-		'settingsOutlineMap' : 'Kaart maken voor alle geocaches:',
-		'settingsOutlineMapSinge' : 'Kaart maken voor elke cache afzonderlijk:',
-		'settingsDecryptHintsDesc' : 'Hints worden  gedecodeerd bij het afdrukken.',
-		'settingsPrintMinimalDesc' : 'Dit bevat enkel de hint en spoiler van een geocache.',
-		'settingsEditDescriptionDesc' : 'De beschrijving van de geocache kan aangepast worden.',
-		'settingsShowSpoilerDesc' : 'Spoilers worden afgedrukt.',
-		'settingsAdditionalWaypointsDesc' : 'De afdrukweergave zal een tabel met de "additional waypoints" van een geocache bevatten.',
-		'settingsLoggedVisitsDesc' : 'Dit toont een "Find Counts" overzicht.',
-		'settingsPageBreakDesc' : 'Bij het afdrukken komt achter elke geocache een nieuwe pagina.',
-		'settingsPageBreakAfterMapDesc' : 'Er komt een nieuwe pagina tussen het overzicht en de geocaches.',
-		'settingsFrontPageDesc' : 'Een overzicht wordt gemaakt met de volledige lijst van de geocaches met een index en plaats voor notities. ',
-		'settingsOutlineMapDesc' : 'Het overzicht  zal een kaart met alle geocaches bevatten.',
-		'settingsOutlineMapSingeDesc' : 'Na iedere geocache komt een kaart met de geocache en de additional waypoints.',
-		'settingsGPXHtmlDesc' : 'Sommige programma\'s en GPS toestellen hebben problemen met geocache beschrijvingen in HTML. Indien dit het geval is, kan je best deze optie afzetten.',
-		'settingsGPXWptsDesc' : 'Additional waypoints worden geëxporteerd als extra waypoint naar GPX. Alle paarkeerplaatsen zullen zichtbaar zijn op je toestel.',
-		'settingsGPXStripGCDesc' : 'Oudere GPS toestellen kunnen problemen hebben met waypoints waarvan de naam langer is dan 8 tekens. Gebruik deze optie indien dit het geval is.',
-		'settingsGPXAttributestoLogDesc' : 'Cache attributen worden ook geregistreerd als een eerste teken.',
-		'settings_map_geocacheidDesc' : 'De GCCode (eg. GC2NTTG) wordt getoond op de kaart.',
-		'settings_map_geocacheindexDesc' : 'De volgorde binnen de toer wordt getoond op de kaart.',
-		'settings_map_geocachenameDesc' : 'De naam van de geocache wordt getoond op de kaart.',
-		'settings_map_awptsDesc' : 'Additional waypoints worden getoond op de kaart.',
-		'settings_map_awpt_nameDesc' : 'De naam van het additional waypoint wordt getoond op de kaart.',
-		'settings_map_awpt_lookupDesc' : 'De lookup code van het additional waypoints wordt getoond op de kaart.',
-		'settings_map_owptsDesc' : 'Eigen waypoints worden getoond op de kaart.',
-		'settings_map_owpt_nameDesc' : 'De naam van het eigen waypoint wordt getoond op de kaart.',
-		'settings_map_gcdeDesc' : 'Met deze optie kan je ook de geocaching.de  kaart in de toer zetten.',
-		'settingsMapType' : 'Standaard kaarttype',
-		'settingsMapSize' : 'Standaard kaartgrootte',
-		'addOwnWaypoint' : 'Eigen waypoint toevoegen',
-		"markerCoordinate" : "Coördinaten",
-		"markerContent" : "Inhoud",
-		"markerType" : "Type",
-		"markerContentHint" : "zal getoond worden in afdrukweergave",
-		"markerCaption" : "Onderschrift",
-		"save" : "Bewaren",
-		"cancel" : "Annuleren",
-		"close" : "Sluiten",
-		'install' : 'Installeren',
-		"edit" : "Bewerken",
-		"example" : "bv. ",
-		"exampleCoords" : "<i>N50°53.692 E004° 20.478</i> or <i>50.894867 4.341300</i>",
-		"dontPrintHint" : "<b>Ter info :</b><br/>Gegevens in dit kader worden <u>niet</u> afgedrukt!",
-		"SCRIPT_ERROR" : "Blijkbaar blokkeer je javascript functionaliteiten (bv. NoScript). Gelieve 'geocaching.com' niet te filteren om gebruik te kunnen maken van GCTour!",
-		'mapTypes' :
-		[{
-				"caption" : "Google Map",
-				"value" : "roadmap"
-			}, {
-				"caption" : "Google Satellite",
-				"value" : "satellite"
-			}, {
-				"caption" : "Google Hybrid",
-				"value" : "hybrid"
-			}, {
-				"caption" : "Google Terrain",
-				"value" : "terrain"
-			}, {
-				"caption" : "Topo Germany",
-				"value" : "oda"
-			}, {
-				"caption" : "OSM Mapnik",
-				"value" : "mapnik"
-			}, {
-				"caption" : "OSM Osma",
-				"value" : "osma"
-			}, {
-				"caption" : "OSM Cycle",
-				"value" : "osmaC"
-			}, {
-				"caption" : "OSM Public Transport",
-				"value" : "osmaP"
-			}
-		],
-		'updateDialog' : "<div><img src='http://gctour-spot.appspot.com/i/signal_antenna.gif' style='float:right'><p>Er is een nieuwe versie van&nbsp;&nbsp;&nbsp;<a target='_blank' href='http://gctour.madd.in'><b>GCTour</b></a>&nbsp;&nbsp;&nbsp;beschikbaar voor installatie.</p><p>Versie <b>###VERSION_OLD###</b> is momenteel geïnstalleerd. De recentste versie is <b>###VERSION_NEW###</b></p><p><b>Versie geschiedenis:</b></p><div class='dialogHistory'>###VERSION_HISTORY###</div><div class='dialogFooter'></div>",
-		'updateCurrently' : 'GCTour versie ' + VERSION + '.' + BUILD + ' is op dit moment!',
-
-		// redesign begin 05.2012
-		'settings' : {
-			'gpx' : {
-				'maxLogCount' : 'max aantal logs'
-			}
-		},
-		'autoTour' : {
-			'title' : 'autoTour',
-			'wait' : 'Even geduld – autoTour wordt aangemaakt!',
-			'radius' : 'Radius',
-			'center' : 'Middelpunt',
-			'help' : 'coördinaten of adres:<i>N50° 53.692 E004° 20.478</i> of <i>50.894867 4.341300</i> of <i>Atomium</i>',
-			'refresh' : 'Bereken een autoTour aan met deze waarden!',
-			'cacheCounts' : 'Geschat <i>aantal</i> geocaches in deze regio:',
-			'duration' : 'Geschatte tijd om deze autoTour aan te maken:',
-			'filter' : {
-				'type' : 'Type',
-				'size' : 'Grootte',
-				'difficulty' : 'Moeilijkheid',
-				'terrain' : 'Terrein',
-				'special' : {
-					'caption' : 'Speciaal',
-					'pm' : {
-						'not' : 'Is not a PM cache',
-						'ignore' : 'Is PM or not PM cache',
-						'only' : 'Is PM cache'
-					},
-					'notfound' : 'I haven\'t found ',
-					'isActive' : 'is Active',
-					'minFavorites' : 'min. Favorites'
-				}
-			}
-		},
-		'dlg' : {
-			'sendMessage' : {
-				'caption' : 'Bericht naar auteur versturen.',
-				'content' : 'Heb je een bug gevonden? Suggesties betreffende GCTour? Ik had graag je mening gehoord.<br/>Stuur me gerust een <b>bericht</b>:',
-				'submit' : 'Bericht versturen!'
-				// old: 'sendMessageTitle', 'sendMessage', 'sendMessageSubmit'
-			},
-			'newVersion' : {
-				'caption' : 'Nieuwe versie beschikbaar',
-				'content' : 'Er is een nieuwe versie van GCTour beschikbaar.\nWil je upgraden? \n\n'
-				// old: 'newVersionDialog', 'newVersionTitle'
-			},
-			'error' : {
-				'content' : '<img src="http://forums.groundspeak.com/GC/public/style_emoticons/default/sad.gif">&nbsp;&nbsp;ESpijtig genoeg is er een fout gebeurd.<br/>' +
-				'Probeer het opnieuw proberen, of kijk voor <a href="#" id="gctour_update_error_dialog">update</a>!<br/><br/>' +
-				'Als de fout blijft voorkomen, gelieve dan een foutenrapport te versturen.<br/>' +
-				'<u>Noot</u><br/>' +
-				'<textarea id="gctour_error_note" rows="4" style="width:99%"></textarea>',
-				'send' : 'foutenrapport versturen'
-				// old: 'ERROR_DIALOG', 'ERROR_DIALOG_SEND'
-			}
-		},
-		'notifications' : {
-			'addgeocache' : {
-				'success' : {
-					'caption' : '{0} werd toegevoegd',
-					'content' : '<b>{0}</b> bevat nu <b>{1}</b>.'
-				},
-				'contains' : {
-					'caption' : '{0} werd <i>niet</i> toegevoegd',
-					'content' : '<b>{0}</b> bevat <b>{1}</b> reeds.'
-				}
-			}
-		},
-		'units' : {
-			'km' : 'Kilometer',
-			'mi' : 'Miles'
-			// old: 'kilometer', 'mile'
-		}
-
-	};
-	$.gctour.i18n.pt = {
-		'name' : 'Português',
-		'language' : 'Idioma',
-		'addToTour' : 'Adicionar &#224; rota',
-		'addToCurrentTour' : "para a rota <b>seleccionada</b>",
-		'addToNewTour' : 'para uma <b>nova</b> rota',
-		'directPrint' : 'Imprimir esta Geocache',
-		'moveGeocache' : 'Mover as coordenadas',
-		'movedGeocache' : 'As coordenadas desta geocache foram mudadas.',
-		'moveGeocacheHelp' : 'Tens a oportunidade de mudar as coordenadas originais desta geocache. Ser&#227;o usadas no modo de impress&#227;o e tamb&#233;m no ficheiro GPX. &#201; util se resolver o enigma.',
-		'originalCoordinates' : 'Coordenadas Originais',
-		'newCoordinates' : "Novas Coordenadas",
-		'showCaches' : 'Adicionar Geocaches vis&#237;veis:',
-		'markedCaches' : 'Add <b>marked</b> geocaches:', // ToDo
-		'removeTourDialog' : "Deseja mesmo remover esta rota?",
-		'logYourVisit' : "Registe a sua visita",
-		'removeFromList' : "Remover da lista",
-		'emptyList' : 'A lista est&#225; vazia.',
-		'notLogedIn' : 'Você precisa estar logado, faça o login ...',
-		'months' : ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"],
-		'printviewTitle' : 'GCTour - http://gctour.madd.in',
-		'pleaseWait' : 'Por favor aguarde - a carregar conte&#250;do ...',
-		'newList' : 'Nova Rota',
-		'sendToGps' : 'Enviar para o GPS',
-		'makeMap' : 'Visualizar no mapa',
-		'makeMapWait' : 'A testar disponibilidade deste mapa',
-		'printview' : 'Modo de impress&#227;o',
-		'print' : 'iniciar a impressão',
-		'downloadGpx' : 'Transferir GPX',
-		'send2cgeo' : 'Enviar para o c:geo',
-		'showSettings' : 'Mostrar Configura&#231;&#245;es',
-		'settings_caption' : 'Configura&#231;&#245;es',
-		'settingsPrintMinimal' : 'Modo de Impress&#227;o m&#237;nimo',
-		'settingsLogCount' : 'N&#250;mero de logs no modo de impress&#227;o',
-		'settingsLogCountNone' : 'nenhum<br />',
-		'settingsLogCountAll' : 'tudo<br />',
-		'settingsLogCountShow' : 'mostrar',
-		'settingsEditDescription' : 'Descri&#231;&#227;o edit&#225;vel',
-		'settingsRemoveImages' : 'remover imagem no clique',
-		'settingsShowSpoiler' : 'Mostrar spoiler',
-		'settingsAdditionalWaypoints' : 'Mostrar Waypoints Adicionais',
-		'settingsLoggedVisits' : 'Mostrar contador de log',
-		'settingsAttributes' : 'mostrar Atributos',
-		'settingsDecryptHints' : 'Decifrar dicas',
-		'settingsSendToGPS' : 'enviar para o GPS',
-		'settingsShowGPX' : 'mostrar o ficheiro GPX',
-		'settingsDownladGPX' : 'transferir GPX<br />',
-		'settingsGPX' : 'Configura&#231;&#245;es do GPX',
-		'settingsGPXHtml' : 'Descri&#231;&#227;o com HTML',
-		'settingsUploadTour' : 'Enviar Rota',
-		'settingsGPXStripGC' : 'Remover "GC" no GC-Code',
-		'settingsGPXWpts' : 'Exportar waypoints adicionais',
-		'settingsGPXAttributestoLog' : 'Criar login com atributos de cache',
-		'settings_map' : 'Mapa',
-		'settings_map_geocacheid' : 'Mostrar id da Geocache',
-		'settings_map_geocacheindex' : 'Mostrar ind&#237;ce da Geocache',
-		'settings_map_geocachename' : 'Mostrar nome da Geocache',
-		'settings_map_awpts' : 'Mostrar Waypoints Adicionais',
-		'settings_map_awpt_name' : 'Mostrar o nome dos Waypoints Adicionais',
-		'settings_map_awpt_lookup' : 'Mostrar c&#243;digo dos Waypoints Adicionais',
-		'settings_map_owpts' : 'Mostrar os nossos waypoints',
-		'settings_map_owpt_name' : 'Mostrar o nome dos nossos waypoints',
-		'settings_map_gcde' : 'Mostrar o mapa de geocaching.de',
-		'loadTour' : 'Carregar Rota:<br />',
-		'openTour' : 'Carregar uma Rota',
-		'load' : 'Carregar',
-		'removeTour' : 'Apagar esta Rota',
-		'deleteCoordinates' : 'Coordenadas para deletar',
-		'copyTour' : 'Copiar Rota',
-		'copy' : 'Copiar',
-		'newTourDialog' : 'Introduza um nome para a nova rota ...',
-		'rename' : 'Renomear',
-		'upload' : 'Enviar rota',
-		'onlineTour' : 'Transferir Rota',
-		'webcodeDownloadHelp' : 'Por favor introduza aqui o c&#65533;digo que recebeu e clique em "Transferir Rota".',
-		'webcodeDownloadButton' : 'Transferir Rota',
-		'findMe' : 'Encontra-me!',
-		'webcodeerror' : 'O C&#243;digo escolhido n&#227;o existe!',
-		'tourUploaded1' : 'Rota enviada com sucesso!\nC&#243;digo:\n      ',
-		'tourUploaded2' : '\nPode ver a rota em http://gctour.madd.in.\nImportante: Por favor anote o c&#243;digo para retirar a rota!!',
-		'settingsFontSize' : 'Tamanho da letra:',
-		'settingsPageBreak' : 'Espa&#231;o na pagina depois da cache:',
-		'settingsPageBreakAfterMap' : 'Espa&#231;o na p&#225;gina depois do mapa:',
-		'webcodePrompt' : 'Transferir rota\nIntroduza um c&#243;digo v&#225;lido, para carregar a rota:',
-		'webcodesuccess' : ' foi carregada!',
-		'webcodeOld' : '\n    !!ATEN&#199;&#195;O!!\nEste c&#243;digo est&#225; conectado com uma rota antiga. Para obter todos os benef&#237;cios do GCTour 2.0, tem de enviar a rota novamente.',
-		'printviewCache' : 'geocache',
-		'printviewFound' : 'encontrada',
-		'printviewNote' : 'nota',
-		'printviewMarker' : "waypoint pr&#243;prio",
-		'printviewAdditionalWaypoint' : "waypoints adicionais",
-		'printviewRemoveMap' : "remover mapa",
-		'printviewZoomMap' : "Abrir este mapa num novo separador.",
-		'settingsFrontPage' : 'Primeira p&#225;gina:',
-		'settingsOutlineMap' : 'Mapa com todas as caches:',
-		'settingsOutlineMapSinge' : 'Mapa para todas as caches:',
-		'settingsDecryptHintsDesc' : 'As dicas v&#227;o estar decifradas no modo de impress&#227;o.',
-		'settingsPrintMinimalDesc' : 'Cont&#233;m apenas a dica e o spoiler da geocache.',
-		'settingsEditDescriptionDesc' : 'A descri&#231;&#227;o pode ser editada da forma como quiser.',
-		'settingsShowSpoilerDesc' : 'Imagens de spoiler v&#227;o estar no modo de impress&#227;o.',
-		'settingsAdditionalWaypointsDesc' : 'O modo de impress&#227;o vai conter uma tabela com todos os "Waypoints Adicionais" de uma geocache.',
-		'settingsLoggedVisitsDesc' : 'Vai mostrar um resumo do "Contador de Visitas".',
-		'settingsPageBreakDesc' : 'Depois de cada geocache vai existir uma espa&#231;amento. Vis&#237;vel depois da impress&#227;o.',
-		'settingsPageBreakAfterMapDesc' : 'Vai existir um espa&#231;amento depois do resumo para separar as geocaches.',
-		'settingsFrontPageDesc' : 'Um resumo vai ser gerado incluindo uma lista completa de todas as geocaches com um &#237;ndice e um espa&#231;o para colocar notas. ',
-		'settingsOutlineMapDesc' : 'O resumo vai conter um mapa com todas as geocaches.',
-		'settingsOutlineMapSingeDesc' : 'Depois de cada geocache est&#225; um mapa contendo a geocache e os seus "Waypoints Adicionais".',
-		'settingsGPXHtmlDesc' : 'Alguns programas/GPSr tem problemas em mostrar as geocaches se a descri&#231;&#227;o estiver no formato HTML. Se a descri&#231;&#227;o estiver confusa, desactive este op&#231;&#227;o.',
-		'settingsGPXWptsDesc' : 'Os waypoints-adicionais v&#227;o ser exportados como waypoint extra no GPX. Ir&#225; ver cada lugar de estacionamento na sua unidade.',
-		'settingsGPXStripGCDesc' : 'GPSr antigos tem problemas com os waypoints com nome maior que 8 caracteres. Use esta op&#231;&#227;o se tem uma unidade destas.',
-		'settingsGPXAttributestoLogDesc' : 'Atributos de cache também são registrados como um primeiro sinal.',
-		'settings_map_geocacheidDesc' : 'O c&#243;digo GCCode (eg. GC0815) estar&#225; visivel no mapa.',
-		'settings_map_geocacheindexDesc' : 'A posi&#231;&#227;o de cada waypoint estar&#225; vis&#237;vel na rota seleccionada.',
-		'settings_map_geocachenameDesc' : 'O nome da geocache estar&#225; visivel.',
-		'settings_map_awptsDesc' : 'Se seleccionada, os Waypoints-Adicionais v&#227;o estar vis&#237;veis.',
-		'settings_map_awpt_nameDesc' : 'O nome dos Waypoints-Adicionais v&#227;o estar no mapa.',
-		'settings_map_awpt_lookupDesc' : 'Os c&#243;digos dos Waypoints-Adicionais v&#227;o estar vis&#237;veis.',
-		'settings_map_owptsDesc' : 'Se tem Waypoints seus na rota seleccionada e se esta op&#231;&#227;o estiver marcada, v&#227;o estar vis&#237;veis no mapa.',
-		'settings_map_owpt_nameDesc' : 'Mostrar o nome dos seus Waypoints',
-		'settings_map_gcdeDesc' : 'Se esta op&#231;&#227;o estiver marcada, ir&#225; ver no mapa do geocaching.de.',
-		'settingsMapType' : 'Tipo de Mapa padr&#227;o',
-		'settingsMapSize' : 'Tamanho de Mapa padr&#227;o',
-		'addOwnWaypoint' : 'Adicionar o seu Waypoint',
-		"markerCoordinate" : "Coordenadas",
-		"markerContent" : "Conte&#250;do",
-		"markerType" : "Tipo",
-		"markerContentHint" : "estar&#225; visivel no modo de impress&#227;o",
-		"markerCaption" : "captura",
-		"save" : "Guardar",
-		"cancel" : "Cancelar",
-		"close" : "Fechar",
-		'install' : 'Instalar',
-		"edit" : "editar",
-		"example" : "ex. ",
-		"exampleCoords" : "<i>N51&#186; 12.123 E010&#186; 23.123</i> ou <i>40.597 -75.542</i>",
-		"dontPrintHint" : "<b>Informa&#231;&#227;o :</b><br />Elementos na caixa <u>n&#227;o</u> v&#227;o ser impressos!",
-		"SCRIPT_ERROR" : "Aparenta que est&#225; a bloquear algumas fontes de javascript (ex. NoScript). Por favor permita 'geocaching.com' permanentemente para usar GCTour!",
-		'mapTypes' :
-		[{
-				"caption" : "Google Map",
-				"value" : "roadmap"
-			}, {
-				"caption" : "Google Satellite",
-				"value" : "satellite"
-			}, {
-				"caption" : "Google Hybrid",
-				"value" : "hybrid"
-			}, {
-				"caption" : "Google Terrain",
-				"value" : "terrain"
-			}, {
-				"caption" : "Topo Germany",
-				"value" : "oda"
-			}, {
-				"caption" : "OSM Mapnik",
-				"value" : "mapnik"
-			}, {
-				"caption" : "OSM Osma",
-				"value" : "osma"
-			}, {
-				"caption" : "OSM Cycle",
-				"value" : "osmaC"
-			}, {
-				"caption" : "OSM Public Transport",
-				"value" : "osmaP"
-			}
-		],
-		'updateDialog' : "<div><img src='http://gctour-spot.appspot.com/i/signal_antenna.gif' style='float:right'><p>Existe uma nova vers&#227;o de &nbsp;&nbsp;&nbsp;<a target='_blank' href='http://gctour.madd.in'><b>GCTour</b></a>&nbsp;&nbsp;&nbsp;dispon&#237;vel para instalar.</p><p>Tem a vers&#227;o <b>###VERSION_OLD###</b> instalada. A &#250;ltima versão &#233; <b>###VERSION_NEW###</b></p><p><b>Hist&#243;rico</b></p><div class='dialogHistory'>###VERSION_HISTORY###</div><div class='dialogFooter'></div>",
-		'updateCurrently' : 'GCTour versão ' + VERSION + '.' + BUILD + ' está atualmente!',
-
-		// redesign begin 05.2012
-		'settings' : {
-			'gpx' : {
-				'maxLogCount' : 'maksymalna liczba dzienników'
-			}
-		},
-		'autoTour' : {
-			'title' : 'autoRota',
-			'wait' : 'Por favor aguarde - criando a autoRota!',
-			'radius' : 'Raio',
-			'center' : 'Centro',
-			'help' : 'Coordenadas ou Endere&#231;o:<i>N51&#186; 12.123 E010&#186; 23.123</i> ou <i>40.597 -75.542</i> ou <i>Paris Eiffel Tower</i>',
-			'refresh' : 'Oblicz autoRota com estes valores!',
-			'cacheCounts' : '<i>N&#250;mero</i> estimado de caches na regi&#227;o:',
-			'duration' : 'Previs&#227;o do tempo de cria&#231;&#227;o desta autoRota:',
-			'filter' : {
-				'type' : 'Typ',
-				'size' : 'Rozmiar',
-				'difficulty' : 'Trudność',
-				'terrain' : 'Teren',
-				'special' : {
-					'caption' : 'Specjalne',
-					'pm' : {
-						'not' : 'Is not a PM cache',
-						'ignore' : 'Is PM or not PM cache',
-						'only' : 'Is PM cache'
-					},
-					'notfound' : 'I haven\'t found ',
-					'isActive' : 'is Active',
-					'minFavorites' : 'min. Favorites'
-				}
-			}
-		},
-		'dlg' : {
-			'sendMessage' : {
-				'caption' : 'Enviar uma mensagem para o autor.',
-				'content' : 'Encontrou um erro? Deseja sugerir algo para o GCTour? Desejamos ouvir a sua opini&#227;o.<br />Envie uma <b>mensagem</b>:',
-				'submit' : 'Submeter a mensagem!'
-				// old: 'sendMessageTitle', 'sendMessage', 'sendMessageSubmit'
-			},
-			'newVersion' : {
-				'caption' : 'Nova versão dispon&#xED;vel',
-				'content' : 'Existe uma nova vers&#227;o de GCTour.\nDeseja actualizar? \n\n'
-				// old: 'newVersionDialog', 'newVersionTitle'
-			},
-			'error' : {
-				'content' : '<img src="http://forums.groundspeak.com/GC/public/style_emoticons/default/sad.gif">&nbsp;&nbsp;Lamento mas ocorreu um erro.<br/>' +
-				'Por favor tente outra vez, ou procure por uma <a href="#" id="gctour_update_error_dialog">atualização</a>!<br/><br/>' +
-				'Se este erro voltar a aparecer, por favor envie um relat&#243;rio.<br/>' +
-				'<u>Nota</u><br/>' +
-				'<textarea id="gctour_error_note" rows="4" style="width:99%"></textarea>',
-				'send' : 'enviar relatório'
-				// old: 'ERROR_DIALOG', 'ERROR_DIALOG_SEND'
-			}
-		},
-		'notifications' : {
-			'addgeocache' : {
-				'success' : {
-					'caption' : '{0} foi adicionada!',
-					'content' : '<b>{0}</b> agora inclui <b>{1}</b>.'
-				},
-				'contains' : {
-					'caption' : '{0} não foi adicionada',
-					'content' : '<b>{0}</b> contém <b>{1}</b> já.'
-				}
-			}
-		},
-		'units' : {
-			'km' : 'Quilometros',
-			'mi' : 'Milhas'
-			// old: 'kilometer', 'mile'
-		}
-
-	};
 	(function () {
 		/*
 		$.each( $.gctour.i18n, function( l, o ) {
@@ -2168,40 +935,50 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 			def = $.gctour.defaultLang,
 			i,
 			arr,
-			lang,
 			trans,
 			cur_trans,
 			def_trans;
+	
+			if (!$.gctour.i18n[cur]){
+				$.gctour.i18n[cur]=JSON.parse(GM_getResourceText('i18n_'+cur));
+			}
+			if (!$.gctour.i18n[def]){
+				$.gctour.i18n[def]=JSON.parse(GM_getResourceText('i18n_'+def));
+			}
 
-			// �bersetzungssuchstring ggf. splitten f�r Objekte
+			// ï¿½bersetzungssuchstring ggf. splitten fï¿½r Objekte
 			arr = str.split(".");
 
 			cur_trans = i18n[cur] || false;
 			def_trans = i18n[def] || false;
 
-			// Versuch die �bersetzung zu holen
+			// Versuch die ï¿½bersetzung zu holen
 			// 'boolean' : false => wird richtig ausgegeben
 			for (i = 0; i < arr.length; i++) {
 				cur_trans = (cur_trans && (cur_trans[arr[i]] !== undefined)) ? cur_trans[arr[i]] : undefined;
 				def_trans = (def_trans && (def_trans[arr[i]] !== undefined)) ? def_trans[arr[i]] : undefined;
 			}
 
-			// Check ob �bersetzung erfolgreich geholt werden konnte
-			trans = (cur_trans !== undefined) ? cur_trans :
-			(def_trans !== undefined) ? def_trans :
-			((DEBUG_MODE === true) ? "NO LANGUAGE" : "");
+			// Check ob ï¿½bersetzung erfolgreich geholt werden konnte
+			if (cur_trans){
+				trans = cur_trans;
+			}else if (def_trans){
+				trans = def_trans;
+			}else if (DEBUG_MODE) {
+				trans="NO TRANSLATION"
+			}
 
 			// debug info current language
 			if (!i18n[cur]) {
 				debug("ERROR: language '" + cur + "' is undefined");
-			} else if (cur_trans === undefined) {
+			} else if (!cur_trans) {
 				debug("ERROR: active language (" + cur + "), search '" + str + "' is undefined");
 			}
 
 			// debug info current language
 			if (!i18n[def]) {
 				debug("ERROR: language '" + def + "' is undefined");
-			} else if (def_trans === undefined) {
+			} else if (!def_trans) {
 				debug("ERROR: default language (" + def + "), search '" + str + "' is undefined");
 			}
 
@@ -2769,7 +1546,7 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 		var j,
 		dummy;
 		for (j = 0; j < mapping.length; j++) {
-			template = template.replace(new RegExp("###" + mapping[j][0] + "###", "g"), mapping[j][1]);
+			template = template.replace(new RegExp("###" + mapping[j][0] + "###","g"), mapping[j][1]);
 		}
 
 		dummy = createElement('div');
@@ -2966,37 +1743,38 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 	}
 
 	function getDateFormat(force) {
-		var date_format_update = new Date(GM_getValue('date_format_update')),
-		current_date = new Date(),
-		req = new XMLHttpRequest(),
-		myUrl = HTTP + '//www.geocaching.com/account/settings/preferences',
-		response_div,
-		date_format;
+//		var date_format_update = new Date(GM_getValue('date_format_update')),
+//		current_date = new Date(),
+//		req = new XMLHttpRequest(),
+//		myUrl = HTTP + '//www.geocaching.com/account/settings/preferences',
+//		response_div,
+//		date_format;
+//
+//		// get date format every 30 minutes
+//		if (force || !date_format_update || Math.round(DateDiff(current_date, date_format_update, "minute")) > 30) {
+//			//replace updatedate
+//			GM_setValue('date_format_update', current_date.toString());
+//
+//			var response = GM_xmlhttpRequest({
+//					method : "GET",
+//					url : myUrl,
+//					synchronous : true
+//				});
+//
+//			response_div = createElement('div');
+//			response_div.innerHTML = response.responseText;
+//			// parse date format
+//			date_format = $('select#SelectedDateFormat option:selected', response_div).val();
+//			if (date_format !== "undefined") {
+//				// and save the selected option
+//				GM_setValue('date_format', date_format);
+//				debug("fn getDateFormat - GM_setValue: 'date_format' = " + date_format);
+//			} else {
+//				error("fn getDateFormat - select#SelectedDateFormat is undefined");
+//			}
+//		}
 
-		// get date format every 30 minutes
-		if (force || !date_format_update || Math.round(DateDiff(current_date, date_format_update, "minute")) > 30) {
-			//replace updatedate
-			GM_setValue('date_format_update', current_date.toString());
-
-			var response = GM_xmlhttpRequest({
-					method : "GET",
-					url : myUrl,
-					synchronous : true
-				});
-
-			response_div = createElement('div');
-			response_div.innerHTML = response.responseText;
-			// parse date format
-			date_format = $('select#SelectedDateFormat option:selected', response_div).val();
-			if (date_format !== "undefined") {
-				// and save the selected option
-				GM_setValue('date_format', date_format);
-				debug("fn getDateFormat - GM_setValue: 'date_format' = " + date_format);
-			} else {
-				error("fn getDateFormat - select#SelectedDateFormat is undefined");
-			}
-		}
-
+		GM_setValue('date_format', 'dd.MM.yyyy');
 		// allways set! otherwise something went wrong...
 		return GM_getValue('date_format');
 	}
@@ -3137,7 +1915,7 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 	};
 
 	/**
-	 * Konvertiert dezimal Gradzahlen in das "deg°"(d), "deg° min" (dm) oder "deg°min'sec''"(dms) Format
+	 * Konvertiert dezimal Gradzahlen in das "degÂ°"(d), "degÂ° min" (dm) oder "degÂ°min'sec''"(dms) Format
 	 *
 	 * @private
 	 * @param   {Number} deg: Degrees
@@ -3178,7 +1956,7 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 			if (d < 10) {
 				tmpD = '0' + tmpD;
 			}
-			dms = tmpD; // add ° symbol
+			dms = tmpD; // add Â° symbol
 			break;
 		case 'dm':
 			min = (deg * 60).toFixed(8); // convert degrees to minutes & round
@@ -3195,7 +1973,7 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 			if (m < 10) {
 				tmpM = '0' + tmpM;
 			}
-			dms = tmpD + '\u00B0' + tmpM; // add ° symbols
+			dms = tmpD + '\u00B0' + tmpM; // add Â° symbols
 			break;
 		case 'dms':
 			sec = (deg * 3600).toFixed(0); // convert degrees to seconds & round
@@ -3214,7 +1992,7 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 			if (s < 10) {
 				s = '0' + s;
 			}
-			dms = d + '\u00B0' + m + '\u2032' + s + '\u2033'; // add °, ', " symbols
+			dms = d + '\u00B0' + m + '\u2032' + s + '\u2033'; // add Â°, ', " symbols
 			break;
 		}
 
@@ -3253,7 +2031,7 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 	};
 
 	/**
-	 * Interpretiert eine Koordinaten Eingabe des Formats "N51° 12.123 E010° 23.123" oder "51.123 10.123" bzw. benutzt Googles Geocoding API um die Koordinaten zu finde.
+	 * Interpretiert eine Koordinaten Eingabe des Formats "N51Â° 12.123 E010Â° 23.123" oder "51.123 10.123" bzw. benutzt Googles Geocoding API um die Koordinaten zu finde.
 	 *
 	 * @param   {String} coord_string: Koordinaten in einem Format
 	 * @param   {Boolean} [force_Geocoding=false]: Wenn gesetzt sucht die Methode bei nicht numerischer Eingabe mittels Geocoding nach den Koordinaten
@@ -3270,9 +2048,9 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 		var lat,
 		lon;
 
-		// regex for N51° 12.123 E12° 34.123
-		var regex_coord_ns = new RegExp(/(N|S)\s*(\d{0,2})\s*°\s*(\d{0,2}[\.,]\d+)/);
-		var regex_coord_ew = new RegExp(/(E|W)\s*(\d{0,3})\s*°\s*(\d{0,2}[\.,]\d+)/);
+		// regex for N51Â° 12.123 E12Â° 34.123
+		var regex_coord_ns = new RegExp(/(N|S)\s*(\d{0,2})\s*Â°\s*(\d{0,2}[\.,]\d+)/);
+		var regex_coord_ew = new RegExp(/(E|W)\s*(\d{0,3})\s*Â°\s*(\d{0,2}[\.,]\d+)/);
 
 		//regex for 51.123 12.123
 		var regex_coord_dec = new RegExp(/(-{0,1}\d{0,2}[\.,]\d+)\s*(-{0,1}\d{0,3}[\.,]\d+)/);
@@ -3303,8 +2081,8 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 				return false;
 			}
 		} else if (result_coord_ns && result_coord_ew) {
-			// result_coord_ns[0] = "N51° 12.123"
-			// result_coord_ew[0] = "E010° 23.123"
+			// result_coord_ns[0] = "N51Â° 12.123"
+			// result_coord_ew[0] = "E010Â° 23.123"
 			lat = Geo.parseDMS(result_coord_ns[0]);
 			lon = Geo.parseDMS(result_coord_ew[0]);
 			return new LatLon(lat, lon);
@@ -4326,9 +3104,7 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 				src : $.gctour.img.downloadGPX,
 				title : $.gctour.lang('downloadGpx'),
 				alt : $.gctour.lang('downloadGpx'),
-				click : function () {
-					downloadGPXFunction()();
-				}
+				click : downloadGPX
 			}),
 
 			// send2cgeo
@@ -4920,71 +3696,43 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 		};
 	}
 
-	function downloadGPXFunction() {
+	function downloadGPX() {
 		//return false;
-		return function () {
-			var gpxForm,
-			nameInput,
-			contentArea,
-			tourName,
-			currentDate,
-			currentDateString,
-			dummyString;
+		var tourName,
+		currentDate;
 
-			if (isLogedIn() && isNotEmptyList()) {
+		if (isLogedIn() && isNotEmptyList()) {
 
-				// add progressbar while loading
-				addProgressbar();
+			// add progressbar while loading
+			addProgressbar();
 
-				gpxForm = document.createElement('form');
-				gpxForm.setAttribute('style', 'display:;');
-				gpxForm.action = 'http://gc.madd.in/gm/download2.php';
-				gpxForm.id = "gpxForm";
+			tourName = currentTour.name.replace(/\s+/g, "_").replace(/[^A-Za-z0-9_]*/g, "");
 
-				gpxForm.method = 'post';
-
-				nameInput = document.createElement('input');
-				nameInput.type = 'hidden';
-				gpxForm.appendChild(nameInput);
-				nameInput.name = 'name';
-
-				contentArea = document.createElement('textarea');
-				gpxForm.appendChild(contentArea);
-				contentArea.name = 'content';
-
-				tourName = currentTour.name.replace(/\s+/g, "_").replace(/[^A-Za-z0-9_]*/g, "");
-
-				currentDate = new Date();
-				currentDateString = currentDate.getFullYear() + "-" + (currentDate.getMonth() + 1) + "-" + currentDate.getDate() + "_" + currentDate.getHours() + "-" + currentDate.getMinutes() + "-" + currentDate.getSeconds();
-
-				nameInput.value = 'GCTour.' + tourName + '.' + currentDateString + '.gpx';
-
-				try {
-					dummyString = getGPX();
-
-					//iff the cancel button is pressed the dummyString just contain canceled
-					if (dummyString == "canceled") {
-						closeOverlay();
-						return;
-					}
-
-					contentArea.innerHTML = encodeURIComponent(dummyString);
-
-					document.body.appendChild(gpxForm);
-					document.getElementById('gpxForm').submit();
-					document.body.removeChild(gpxForm);
-
-					// all done - remove the overlay
+			try {
+				getGPX().then(function (data) {
+					currentDate = new Date();
+					saveAs(
+						new Blob(
+							[data],
+							{type:'text/plain;charset=utf-8'}
+						),
+						'GCTour.' + tourName + '.' + currentDate.getFullYear() + "-" + (currentDate.getMonth() + 1) + "-" + currentDate.getDate() + "_" + currentDate.getHours() + "-" + currentDate.getMinutes() + "-" + currentDate.getSeconds() + '.gpx'
+					);
 					closeOverlay();
-
-				} catch (e) {
+				},function(msg){
+					console.trace('downloadGPX');
 					addErrorDialog({
 						caption : "GPX error",
-						_exception : e
+						_exception : msg
 					});
-				}
+				});
+			} catch (e) {
+				addErrorDialog({
+					caption : "GPX error",
+					_exception : e
+				});
 			}
-		};
+		}
 	}
 
 	function sendToGPS() {
@@ -5020,10 +3768,10 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 		$('#uxGPSProviderTabs').html("<tbody><tr><td>GCTOUR: GARMIN ONLY</td></tr></tbody>");
 		$('#premiumUpsellMessage').remove();
 
-		try {
+		getGPX().then(function (gpx) {
 			dataStringElement = document.getElementById('dataString');
 			dataStringElement.value = $.gctour.lang('pleaseWait');
-			dataStringElement.value = getGPX();
+			dataStringElement.value = gpx;
 
 			tourName = currentTour.name.replace(/\s+/g, "_").replace(/[^A-Za-z0-9_]*/g, "");
 
@@ -5034,40 +3782,45 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 			$('#cacheID').val('GCTour.' + tourName + '.' + currentDateString + '.gpx');
 
 			// all done - remove the overlay
-			closeOverlay();
-		} catch (e) {
+			closeOverlay();				
+		},function(e){
 			addErrorDialog({
 				caption : "Send to GPSr error",
 				_exception : e
 			});
-		}
+		});
 
 	}
 
 	function getMapGeocache(gcid) {
+		return getGeocache(gcid, 0).then(function (geocache) {
+			return new Promise(function (resolve, reject) {
+				var mapCache;
+				if (geocache === "pm only") {
+					reject();
+				} else {
+					mapCache = {
+						gcid: geocache.gcid,
+						guid: geocache.guid,
+						image: geocache.image,
+						name: geocache.name,
+						difficulty: geocache.difficulty,
+						terrain: geocache.terrain,
+						latitude: geocache.lat,
+						longitude: geocache.lon
+					};
 
-		var geocache = getGeocache(gcid, 0);
-		if (geocache !== "pm only") {
-			var mapCache = {};
-			mapCache.gcid = geocache.gcid;
-			mapCache.guid = geocache.guid;
-			mapCache.image = geocache.image;
-			mapCache.name = geocache.name;
-			mapCache.difficulty = geocache.difficulty;
-			mapCache.terrain = geocache.terrain;
-			mapCache.latitude = geocache.lat;
-			mapCache.longitude = geocache.lon;
+					// save additional waypoints
+					var additional_waypoints = geocache.additional_waypoints;
+					for (var waypoint_i = 0; waypoint_i < additional_waypoints.length; waypoint_i++) {
+						additional_waypoints[waypoint_i].note = "";
+					}
 
-			// save additional waypoints
-			var additional_waypoints = geocache.additional_waypoints;
-			for (waypoint_i = 0; waypoint_i < additional_waypoints.length; waypoint_i++) {
-				additional_waypoints[waypoint_i].note = "";
-			}
-
-			mapCache.additional_waypoints = additional_waypoints;
-			return mapCache;
-		}
-
+					mapCache.additional_waypoints = additional_waypoints;
+					resolve(mapCache);
+				}
+			});
+		});
 	}
 
 	function getMapMarker(markerId) {
@@ -5760,11 +4513,10 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 
 		var cacheIDs = [],
 		caches = currentTour.geocaches,
-		cachesCount = caches.length, // mit ggf. Waypoints
 		cacheIDsCount = 0, // ohne ggf. Waypoints
 
 		group = 1, // wieviel IDs sollen gleichzeitig übertragen werden
-		url = "http://send2.cgeo.org/add.html",
+		url = "https://send2.cgeo.org/add.html",
 		//url = "http://send2.cgeo.org/device.html", // TEST exception
 
 		$pBar = $("#gctour_send2cgeo_progressbar"),
@@ -5779,7 +4531,6 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 				return ((n.id !== undefined) ? n.id : null);
 			});
 		cacheIDsCount = cacheIDs.length;
-
 		$pBar
 		.progressbar("option", {
 			"value" : 0,
@@ -5795,55 +4546,64 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 		// vererbte Variablen
 		// group, cacheIDsCount, cacheIDs, url
 		// $pBar, txtReg, txtSuc, waitTime
-		function sendRequests(fromPos) {
+		var sendRequests = function(fromPos) {
+			return new Promise(function (resolve, reject) {
+				var toPos = fromPos + group,
+				param = "",
+				boo = true;
 
-			var toPos = fromPos + group,
-			param = "",
-			res = "",
-			boo = true;
+				// toPos darf nicht größer sein als die Liste
+				toPos = (toPos > cacheIDsCount) ? cacheIDsCount : toPos;
 
-			// toPos darf nicht größer sein als die Liste
-			toPos = (toPos > cacheIDsCount) ? cacheIDsCount : toPos;
+				param = cacheIDs.slice(fromPos, toPos).join(",");
+				
+				GM_xmlhttpRequest({
+					method:'GET',
+					url:url + "?cache=" + param,
+					onreadystatechange: function (req) {
+						if (req.readyState === 4) {
+							$pBar.progressbar("option", "value", toPos);
 
-			param = cacheIDs.slice(fromPos, toPos).join(",");
-			log("1: " + currentTime());
-
-			// eins nach dem anderen, response abwarten
-			res = getSync(url + "?cache=" + param);
-			$pBar.progressbar("option", "value", toPos);
-
-			//get(url + "?cache=" + param, function(){});   // alles wird ohne pause abgefeuert (in while) = nicht erwünscht
-			log("2: " + currentTime());
-
-			// responseText to XML ?
-			//$body = $( $.parseXML( res ) ).find( "body" );
-
-			if (res.indexOf(txtReg) !== -1) { // Browser nicht registriert
-				boo = false;
-				$("<div>Browser not registred, Register first !</div>").dialog($.gctour.dialog.info());
-				$pBar.addClass("hide");
-				$btn.button("enable");
-			} else if (res.indexOf(txtSuc) === -1) { // response nicht okay (Cache konnte wahrscheinlich nicht hinzugefügt werden)
-				boo = false;
-				$("<div>no success, error when adding</div>").dialog($.gctour.dialog.info());
-				$pBar.addClass("hide");
-				$btn.button("enable");
-			}
-
-			log(res); // send2.cgeo.org/add.html?cache=GC4924F
-			fromPos = toPos;
-			log("next Pos: " + fromPos);
-			if (cacheIDsCount > fromPos && boo) {
-				setTimeout(sendRequests, waitTime, fromPos);
-			}
-
+							if (req.responseText.indexOf(txtReg) !== -1) { // Browser nicht registriert
+								reject('Browser not registred');
+							} else if (req.responseText.indexOf(txtSuc) === -1) { // response nicht okay (Cache konnte wahrscheinlich nicht hinzugefügt werden)
+								reject('Sending failed');
+							}else{
+								log(req.responseText); // send2.cgeo.org/add.html?cache=GC4924F
+								fromPos = toPos;
+								log("next Pos: " + fromPos);
+								if (cacheIDsCount > fromPos && boo) {
+									setTimeout(function(){
+										sendRequests(fromPos).then(resolve, reject);
+									}, waitTime);
+								}else{
+									resolve(true);
+								}
+							}
+						}
+					},
+					onerror: function () {
+						console.log(req.error);
+						reject('request error');
+					}
+				});
+			});
 		};
-
-		if (cacheIDsCount > 0) {
-			setTimeout(sendRequests, waitTime, 0);
-		}
-
+		
+		sendRequests(0).then(function () {
+			$("<div>Successfully sent to c:geo</div>").dialog($.gctour.dialog.info());
+			$pBar.addClass("hide");
+			$btn.button("enable");
+		},function(msg){
+			$("<div>" + msg + "</div>").dialog($.gctour.dialog.info());
+			$pBar.addClass("hide");
+			$btn.button("enable");
+//		}).finally(function(){
+//			$pBar.addClass("hide");
+//			$btn.button("enable");
+		});
 	}
+	
 	$('#gctour_tourHeader').find('.tourImage').eq(2).after(
 		// sendcgeo
 		$('<img>', {
@@ -5856,10 +4616,10 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 			}
 		}));
 	var openGcTour2cgeoDialog = function () {
-
-		if (!DEBUG_MODE) {
-			return;
-		}
+//
+//		if (!DEBUG_MODE) {
+//			return;
+//		}
 
 		var cacheIDsCount = $.grep(currentTour.geocaches, function (n, i) {
 				return (n.id !== undefined);
@@ -6453,7 +5213,7 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 		wptcodeInput.id = 'wptcodeInput';
 
 		exampleCoords = document.createElement('div');
-		exampleCoords.innerHTML = $.gctour.lang('example') + ' <i>N51° 12.123 E010° 23.123</i> or <i>51.123 10.123</i>';
+		exampleCoords.innerHTML = $.gctour.lang('example') + ' <i>N51Â° 12.123 E010Â° 23.123</i> or <i>51.123 10.123</i>';
 
 		td.appendChild(exampleCoords);
 
@@ -7998,393 +6758,401 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 				}
 
 				/* map array */
-				var geocaches = [];
-				var costumMarkers = [];
-
+				var geocaches = [],
+					costumMarkers = [],
+					promises = [],
+					maxPrintLogs = parseInt(GM_getValue('maxPrintLogs', 3), 10);
+			
 				for (i = 0; i < currentTour.geocaches.length; ++i) {
+					promises.push(getGeocache(currentTour.geocaches[i].id, Math.max(4, maxPrintLogs)));
+				}
+				
+				Promise.all(promises).then(function (caches) {
+					console.log(currentTour.geocaches);
+					console.log(caches);
+					for (i = 0; i < currentTour.geocaches.length; ++i) {
 
-					if (GM_getValue("stopTask", false) && i !== 0) {
-						GM_setValue("stopTask", false);
-						alert("aktualisiere dich!");
-					} else if (GM_getValue("stopTask", false) && i === 0) {
-						GM_setValue("stopTask", false);
-					}
+//						if (GM_getValue("stopTask", false) && i !== 0) {
+//							GM_setValue("stopTask", false);
+//							alert("aktualisiere dich!");
+//						} else if (GM_getValue("stopTask", false) && i === 0) {
+//							GM_setValue("stopTask", false);
+//						}
 
-					var costumMarker = (typeof(currentTour.geocaches[i].latitude) != "undefined");
+						if (typeof(currentTour.geocaches[i].latitude) === "undefined") {
 
-					if (!costumMarker) {
+							// retrieve at least 4 logs (if available) in order to display Last4Logs status, independent of maxPrintLogs parameter
+							var geocache = caches[i];
 
-						var maxPrintLogs = parseInt(GM_getValue('maxPrintLogs', 3), 10);
-						// retrieve at least 4 logs (if available) in order to display Last4Logs status, independent of maxPrintLogs parameter
-						var geocache = getGeocache(currentTour.geocaches[i].id, Math.max(4, maxPrintLogs));
+							if (geocache === "pm only") {
+								var pmOnlyDiv = createElement('div');
+								pmOnlyDiv.setAttribute('class', 'cacheDetail');
+								pmOnlyDiv.innerHTML = "<b><img src='" + currentTour.geocaches[i].image + "'>" + currentTour.geocaches[i].name + " (" + currentTour.geocaches[i].id + ") is PM ONLY!</b>";
+								body.appendChild(pmOnlyDiv);
+								body.appendChild(document.createElement('br'));
+							} else {
 
-						if (geocache == "pm only") {
-							var pmOnlyDiv = createElement('div');
-							pmOnlyDiv.setAttribute('class', 'cacheDetail');
-							pmOnlyDiv.innerHTML = "<b><img src='" + currentTour.geocaches[i].image + "'>" + currentTour.geocaches[i].name + " (" + currentTour.geocaches[i].id + ") is PM ONLY!</b>";
-							body.appendChild(pmOnlyDiv);
-							body.appendChild(document.createElement('br'));
+								//log
+								var logs_div = createElement('div');
+
+								var logs = geocache.logs;
+								// if maxprintlogs is <= -1, export all logs to the print overview
+								if (maxPrintLogs <= -1) {
+									maxPrintLogs = logs.length;
+								}
+								maxPrintLogs = maxPrintLogs;
+								for (var log_i = 0; (log_i < logs.length && (log_i < maxPrintLogs)); log_i++) {
+									var log_div = createElement('div', {
+											style : "width:100%;page-break-inside:avoid;"
+										});
+									log_div.setAttribute("class", "removable");
+
+									var log_type_img = createElement('img', {
+											src : HTTP + '//www.geocaching.com/images/logtypes/' + logs[log_i].LogTypeImage
+										});
+									log_div.appendChild(log_type_img);
+									log_div.innerHTML += " " + logs[log_i].Created + " - " + logs[log_i].UserName + " (" + logs[log_i].GeocacheFindCount + ")<br/>";
+									log_div.innerHTML += logs[log_i].LogText;
+
+									log_div.style.borderBottom = "1px dashed lightgray";
+									append(log_div, logs_div);
+								}
+
+								var dummy_additional_waypoints = createElement('div');
+								if (GM_getValue('printAdditionalWaypoints', true)) {
+									var wpts_table = createElement('table', {
+											style : "width:100%;border-collapse:separate;"
+										});
+									append(wpts_table, dummy_additional_waypoints);
+									wpts_table.setAttribute("class", "removable");
+									var content = "<tr>";
+									for (var waypoints_i = 0; waypoints_i < geocache.additional_waypoints.length; waypoints_i++) {
+
+										if (waypoints_i % 2 === 0 || waypoints_i == geocache.additional_waypoints.length - 1) {
+											if (waypoints_i !== 0 && waypoints_i != 1) {
+												content += "</tr>";
+											}
+											if (waypoints_i == geocache.additional_waypoints.length - 1 && waypoints_i !== 1) {
+												content += "<tr>";
+											}
+										}
+
+										content += "<td style='width:50%;'>";
+										content += "<img src='" + geocache.additional_waypoints[waypoints_i].symbol + "'>";
+										content += "<b>" + geocache.additional_waypoints[waypoints_i].name + "</b>";
+										content += " | " + geocache.additional_waypoints[waypoints_i].coordinates + "<br/>";
+										content += "<i>" + geocache.additional_waypoints[waypoints_i].note + "</i><br/>";
+									}
+									content += "</tr>";
+
+									wpts_table.innerHTML = content;
+								}
+
+								//images
+								var dummy_images = createElement('div');
+								if (GM_getValue('printSpoilerImages', true)) {
+									var image_table = createElement('table', {
+											style : "border-collapse:seperate;border-spacing:2px;width:100%"
+										});
+									append(image_table, dummy_images);
+									var content = "<tr>";
+									for (var images_i = 0; images_i < geocache.images.length; images_i++) {
+										if (images_i % 2 === 0 || images_i == geocache.images.length - 1) {
+											if (images_i !== 0 && images_i !== 1) {
+												content += "</tr>";
+											}
+											if (images_i == geocache.images.length - 1 && images_i != 1) {
+												content += "<tr>";
+											}
+										}
+										content += "<td class='removable'>";
+										content += "<img style='max-width:8cm;' src='" + geocache.images[images_i].href + "'><br/>";
+										content += "<b>" + geocache.images[images_i].textContent + "</b>";
+										content += "</td>";
+									}
+									content += "</tr>";
+									image_table.innerHTML = content;
+								}
+
+								// inventory
+								var inventory = createElement('span');
+								for (var inventory_i = 0; inventory_i < geocache.inventory.length; inventory_i++) {
+									var image = createElement('img');
+									image.src = geocache.inventory[inventory_i].src;
+									append(image, inventory);
+								}
+								if (geocache.inventory.length === 0) {
+									var empty_inventory = createElement('span');
+									empty_inventory.innerHTML = "empty";
+									append(empty_inventory, inventory);
+								}
+
+								//attributes
+								var attributes = createElement('span');
+								for (var attributes_i = 0; attributes_i < geocache.attributes.length; attributes_i++) {
+									var attribute = geocache.attributes[attributes_i];
+									attribute.style.width = "16px";
+									attribute.style.height = "16px";
+									attribute.style.marginRight = "3px";
+									//~ attribute.style.opacity = "0.5";
+									if (attribute.src != "http://www.geocaching.com/images/attributes/attribute-blank.gif") {
+										append(attribute, attributes);
+									}
+								}
+
+								var map_element_dummy = createElement('div');
+								var map_element = createElement('div');
+								append(map_element, map_element_dummy);
+
+								// map the geocache to uploadable version
+								var mapCache = {};
+								mapCache.gcid = geocache.gcid;
+								mapCache.guid = geocache.guid;
+								mapCache.image = geocache.image;
+								mapCache.name = geocache.name;
+								mapCache.difficulty = geocache.difficulty;
+								mapCache.terrain = geocache.terrain;
+								mapCache.latitude = geocache.lat;
+								mapCache.longitude = geocache.lon;
+
+								// save additional waypoints
+								var additional_waypoints = geocache.additional_waypoints;
+								for (waypoint_i = 0; waypoint_i < additional_waypoints.length; waypoint_i++) {
+									additional_waypoints[waypoint_i].note = "";
+								}
+								mapCache.additional_waypoints = additional_waypoints;
+								geocaches.push(mapCache);
+								// map the geocache to uploadable version - END -
+
+								var gcComment = "";
+
+								if (geocache.comment) {
+									gcComment = "<b><u>GCComment:</u></b><br/>";
+									if (geocache.comment.lat) {
+										var parsedCoords = new LatLon(geocache.comment.lat, geocache.comment.lng).toString();
+										gcComment += "<b>Final Coordinates:</b> " + parsedCoords + "<br/>";
+									}
+									gcComment += "<b>Comment:</b> (" + geocache.comment.state + ") " + geocache.comment.commentValue;
+								}
+
+								var cache_note = "";
+								if (geocache.cache_note) {
+									cache_note = "<b><u>Cache Note:</u></b><br/>";
+									cache_note += geocache.cache_note;
+								}
+
+								if (GM_getValue('printFrontpage', true) && !minimal) {
+
+									$(document)
+									// setting real coordinates on titlepage
+									.find("span#coords_" + geocache.gcid)
+									.html(geocache.coordinates)
+									.css({
+										'border-bottom' : (geocache.coordinatesisedit === true ? '2px solid gray' : 'none')
+									})
+									.end()
+									// setting D, T and size on titlepage
+									.find("span#d_" + geocache.gcid).html(geocache.difficulty).end()
+									.find("span#t_" + geocache.gcid).html(geocache.terrain).end()
+									.find("span#s_" + geocache.gcid).html(geocache.size.substring(0, 1)).end();
+
+									// set the last 4 logs icon:
+									getLast4Logs(geocache.logs, $("canvas#l4l_" + geocache.gcid, document));
+									//~ $("span#l4l_"+geocache.gcid,document)[0].html(getLast4Logs(geocache.logs));
+								}
+
+								var geocacheMapping = [
+									['GCID', geocache.gcid],
+									['CACHECOUNT', i + 1],
+									['GUID', geocache.guid],
+									['TYPE', geocache.type],
+									['CACHENAME', (geocache.available) ? geocache.name : "<span style='text-decoration: line-through !important;'>" + geocache.name + "</span>"],
+									['CACHESYM', geocache.cacheSym],
+									['OWNER', geocache.owner],
+									['HIDDEN', formatDate(geocache.hidden)],
+									['ATTRIBUTES', attributes.innerHTML],
+									['BEARING', geocache.bearing],
+									['DISTANCE', geocache.distance],
+									['INVENTORY', inventory.innerHTML],
+									['COORDINATESISEDIT', (geocache.coordinatesisedit === true) ? '' : 'hidden'],
+									['COORDINATES', geocache.coordinates],
+									['DIFFICULTY', geocache.difficulty.replace(/\./, "_")],
+									['TERRAIN', geocache.terrain.replace(/\./, "_")],
+									['SIZE', geocache.size.toLowerCase().replace(/ /, "_")],
+									['SHORT_DESCRIPTION', (geocache.short_description.length === 1) ? geocache.short_description.html() : ""],
+									['LONG_DESCRIPTION', (geocache.long_description.length === 1) ? geocache.long_description.html() : ""],
+									['GCCOMMENT', gcComment],
+									['CACHENOTE', cache_note],
+									['HINT', (GM_getValue('decryptPrintHints', true)) ? geocache.hint : convertROTStringWithBrackets(geocache.hint)],
+									['ADDITIONAL_WAYPOINTS', dummy_additional_waypoints.innerHTML],
+									['IMAGES', dummy_images.innerHTML],
+									['MAP', map_element_dummy.innerHTML],
+									['MAPID', "MAP_" + geocache.gcid],
+									['LOGCOUNTER', (GM_getValue('printLoggedVisits', false)) ? geocache.find_counts.html() : ""],
+									['LOGS', logs_div.innerHTML]
+								];
+
+								if (minimal) {
+									geocacheMapping.push(['HIDDENSTYLE', "hidden"]);
+								} else {
+									geocacheMapping.push(['HIDDENSTYLE', ""]);
+								}
+
+								var cacheDetailTemp = fillTemplate(geocacheMapping, cacheDetailTemplate);
+
+								// class "removable" elements and removable images in description
+								$(".removable, div[class*='long'] img", cacheDetailTemp)
+								.click(function (e) {
+									e.stopPropagation();
+									$(this).remove();
+								})
+								.hover(
+									function () {
+									$(this).css({
+										"opacity" : "0.5",
+										"cursor" : "url('" + $.gctour.img.del + "'),pointer"
+									});
+								},
+									function () {
+									$(this).css({
+										"opacity" : 1
+									});
+								});
+
+								// remove href attribute from links in "*=long" class
+								$("div[class*='long'] a", cacheDetailTemp).removeAttr("href");
+
+								// add editable mode
+								if (GM_getValue('printEditMode', false)) {
+									$("div[class*='long'], div[class*='short']", cacheDetailTemp).attr('contenteditable', 'true');
+								}
+
+								if (GM_getValue('printPageBreak', false)) {
+									if (i < currentTour.geocaches.length - 1) {
+										cacheDetailTemp.style.pageBreakAfter = 'always';
+									}
+								}
+
+								body.appendChild(cacheDetailTemp);
+								body.appendChild(document.createElement('br'));
+
+							}
+
 						} else {
 
-							//log
-							var logs_div = createElement('div');
+							// map costum marker to uploadable version
+							var cm = currentTour.geocaches[i];
+							cm.index = i;
+							costumMarkers.push(cm);
+							// map costum marker to uploadable version - END -
 
-							var logs = geocache.logs;
-							// if maxprintlogs is <= -1, export all logs to the print overview
-							if (maxPrintLogs <= -1) {
-								maxPrintLogs = logs.length;
-							}
-							maxPrintLogs = maxPrintLogs;
-							for (var log_i = 0; (log_i < logs.length && (log_i < maxPrintLogs)); log_i++) {
-								var log_div = createElement('div', {
-										style : "width:100%;page-break-inside:avoid;"
-									});
-								log_div.setAttribute("class", "removable");
-
-								var log_type_img = createElement('img', {
-										src : HTTP + '//www.geocaching.com/images/logtypes/' + logs[log_i].LogTypeImage
-									});
-								log_div.appendChild(log_type_img);
-								log_div.innerHTML += " " + logs[log_i].Created + " - " + logs[log_i].UserName + " (" + logs[log_i].GeocacheFindCount + ")<br/>";
-								log_div.innerHTML += logs[log_i].LogText;
-
-								log_div.style.borderBottom = "1px dashed lightgray";
-								append(log_div, logs_div);
-							}
-
-							var dummy_additional_waypoints = createElement('div');
-							if (GM_getValue('printAdditionalWaypoints', true)) {
-								var wpts_table = createElement('table', {
-										style : "width:100%;border-collapse:separate;"
-									});
-								append(wpts_table, dummy_additional_waypoints);
-								wpts_table.setAttribute("class", "removable");
-								var content = "<tr>";
-								for (var waypoints_i = 0; waypoints_i < geocache.additional_waypoints.length; waypoints_i++) {
-
-									if (waypoints_i % 2 === 0 || waypoints_i == geocache.additional_waypoints.length - 1) {
-										if (waypoints_i !== 0 && waypoints_i != 1) {
-											content += "</tr>";
-										}
-										if (waypoints_i == geocache.additional_waypoints.length - 1 && waypoints_i !== 1) {
-											content += "<tr>";
-										}
-									}
-
-									content += "<td style='width:50%;'>";
-									content += "<img src='" + geocache.additional_waypoints[waypoints_i].symbol + "'>";
-									content += "<b>" + geocache.additional_waypoints[waypoints_i].name + "</b>";
-									content += " | " + geocache.additional_waypoints[waypoints_i].coordinates + "<br/>";
-									content += "<i>" + geocache.additional_waypoints[waypoints_i].note + "</i><br/>";
-								}
-								content += "</tr>";
-
-								wpts_table.innerHTML = content;
-							}
-
-							//images
-							var dummy_images = createElement('div');
-							if (GM_getValue('printSpoilerImages', true)) {
-								var image_table = createElement('table', {
-										style : "border-collapse:seperate;border-spacing:2px;width:100%"
-									});
-								append(image_table, dummy_images);
-								var content = "<tr>";
-								for (var images_i = 0; images_i < geocache.images.length; images_i++) {
-									if (images_i % 2 === 0 || images_i == geocache.images.length - 1) {
-										if (images_i !== 0 && images_i !== 1) {
-											content += "</tr>";
-										}
-										if (images_i == geocache.images.length - 1 && images_i != 1) {
-											content += "<tr>";
-										}
-									}
-									content += "<td class='removable'>";
-									content += "<img style='max-width:8cm;' src='" + geocache.images[images_i].href + "'><br/>";
-									content += "<b>" + geocache.images[images_i].textContent + "</b>";
-									content += "</td>";
-								}
-								content += "</tr>";
-								image_table.innerHTML = content;
-							}
-
-							// inventory
-							var inventory = createElement('span');
-							for (var inventory_i = 0; inventory_i < geocache.inventory.length; inventory_i++) {
-								var image = createElement('img');
-								image.src = geocache.inventory[inventory_i].src;
-								append(image, inventory);
-							}
-							if (geocache.inventory.length === 0) {
-								var empty_inventory = createElement('span');
-								empty_inventory.innerHTML = "empty";
-								append(empty_inventory, inventory);
-							}
-
-							//attributes
-							var attributes = createElement('span');
-							for (var attributes_i = 0; attributes_i < geocache.attributes.length; attributes_i++) {
-								var attribute = geocache.attributes[attributes_i];
-								attribute.style.width = "16px";
-								attribute.style.height = "16px";
-								attribute.style.marginRight = "3px";
-								//~ attribute.style.opacity = "0.5";
-								if (attribute.src != "http://www.geocaching.com/images/attributes/attribute-blank.gif") {
-									append(attribute, attributes);
-								}
-							}
-
-							var map_element_dummy = createElement('div');
-							var map_element = createElement('div');
-							append(map_element, map_element_dummy);
-
-							// map the geocache to uploadable version
-							var mapCache = {};
-							mapCache.gcid = geocache.gcid;
-							mapCache.guid = geocache.guid;
-							mapCache.image = geocache.image;
-							mapCache.name = geocache.name;
-							mapCache.difficulty = geocache.difficulty;
-							mapCache.terrain = geocache.terrain;
-							mapCache.latitude = geocache.lat;
-							mapCache.longitude = geocache.lon;
-
-							// save additional waypoints
-							var additional_waypoints = geocache.additional_waypoints;
-							for (waypoint_i = 0; waypoint_i < additional_waypoints.length; waypoint_i++) {
-								additional_waypoints[waypoint_i].note = "";
-							}
-							mapCache.additional_waypoints = additional_waypoints;
-							geocaches.push(mapCache);
-							// map the geocache to uploadable version - END -
-
-							var gcComment = "";
-
-							if (geocache.comment) {
-								gcComment = "<b><u>GCComment:</u></b><br/>";
-								if (geocache.comment.lat) {
-									var parsedCoords = new LatLon(geocache.comment.lat, geocache.comment.lng).toString();
-									gcComment += "<b>Final Coordinates:</b> " + parsedCoords + "<br/>";
-								}
-								gcComment += "<b>Comment:</b> (" + geocache.comment.state + ") " + geocache.comment.commentValue;
-							}
-
-							var cache_note = "";
-							if (geocache.cache_note) {
-								cache_note = "<b><u>Cache Note:</u></b><br/>";
-								cache_note += geocache.cache_note;
-							}
-
-							if (GM_getValue('printFrontpage', true) && !minimal) {
-
-								$(document)
-								// setting real coordinates on titlepage
-								.find("span#coords_" + geocache.gcid)
-								.html(geocache.coordinates)
-								.css({
-									'border-bottom' : (geocache.coordinatesisedit === true ? '2px solid gray' : 'none')
-								})
-								.end()
-								// setting D, T and size on titlepage
-								.find("span#d_" + geocache.gcid).html(geocache.difficulty).end()
-								.find("span#t_" + geocache.gcid).html(geocache.terrain).end()
-								.find("span#s_" + geocache.gcid).html(geocache.size.substring(0, 1)).end();
-
-								// set the last 4 logs icon:
-								getLast4Logs(geocache.logs, $("canvas#l4l_" + geocache.gcid, document));
-								//~ $("span#l4l_"+geocache.gcid,document)[0].html(getLast4Logs(geocache.logs));
-							}
-
-							var geocacheMapping = [
-								['GCID', geocache.gcid],
-								['CACHECOUNT', i + 1],
-								['GUID', geocache.guid],
-								['TYPE', geocache.type],
-								['CACHENAME', (geocache.available) ? geocache.name : "<span style='text-decoration: line-through !important;'>" + geocache.name + "</span>"],
-								['CACHESYM', geocache.cacheSym],
-								['OWNER', geocache.owner],
-								['HIDDEN', formatDate(geocache.hidden)],
-								['ATTRIBUTES', attributes.innerHTML],
-								['BEARING', geocache.bearing],
-								['DISTANCE', geocache.distance],
-								['INVENTORY', inventory.innerHTML],
-								['COORDINATESISEDIT', (geocache.coordinatesisedit === true) ? '' : 'hidden'],
-								['COORDINATES', geocache.coordinates],
-								['DIFFICULTY', geocache.difficulty.replace(/\./, "_")],
-								['TERRAIN', geocache.terrain.replace(/\./, "_")],
-								['SIZE', geocache.size.toLowerCase().replace(/ /, "_")],
-								['SHORT_DESCRIPTION', (geocache.short_description.length === 1) ? geocache.short_description.html() : ""],
-								['LONG_DESCRIPTION', (geocache.long_description.length === 1) ? geocache.long_description.html() : ""],
-								['GCCOMMENT', gcComment],
-								['CACHENOTE', cache_note],
-								['HINT', (GM_getValue('decryptPrintHints', true)) ? geocache.hint : convertROTStringWithBrackets(geocache.hint)],
-								['ADDITIONAL_WAYPOINTS', dummy_additional_waypoints.innerHTML],
-								['IMAGES', dummy_images.innerHTML],
-								['MAP', map_element_dummy.innerHTML],
-								['MAPID', "MAP_" + geocache.gcid],
-								['LOGCOUNTER', (GM_getValue('printLoggedVisits', false)) ? geocache.find_counts.html() : ""],
-								['LOGS', logs_div.innerHTML]
+							var markerMapping = [
+								['GCID', $.gctour.lang('printviewMarker')],
+								['CACHECOUNT', (i + 1)],
+								['TYPE', currentTour.geocaches[i].image],
+								['NAME', currentTour.geocaches[i].name],
+								['COORDINATES', new LatLon(currentTour.geocaches[i].latitude, currentTour.geocaches[i].longitude).toString()],
+								['CONTENT', currentTour.geocaches[i].content.replace(/\n/g, "<br />")]
 							];
 
 							if (minimal) {
-								geocacheMapping.push(['HIDDENSTYLE', "hidden"]);
+								markerMapping.push(['HIDDENSTYLE', "hidden"]);
 							} else {
-								geocacheMapping.push(['HIDDENSTYLE', ""]);
+								markerMapping.push(['HIDDENSTYLE', ""]);
 							}
 
-							var cacheDetailTemp = fillTemplate(geocacheMapping, cacheDetailTemplate);
-
-							// class "removable" elements and removable images in description
-							$(".removable, div[class*='long'] img", cacheDetailTemp)
-							.click(function (e) {
-								e.stopPropagation();
-								$(this).remove();
-							})
-							.hover(
-								function () {
-								$(this).css({
-									"opacity" : "0.5",
-									"cursor" : "url('" + $.gctour.img.del + "'),pointer"
-								});
-							},
-								function () {
-								$(this).css({
-									"opacity" : 1
-								});
-							});
-
-							// remove href attribute from links in "*=long" class
-							$("div[class*='long'] a", cacheDetailTemp).removeAttr("href");
-
-							// add editable mode
-							if (GM_getValue('printEditMode', false)) {
-								$("div[class*='long'], div[class*='short']", cacheDetailTemp).attr('contenteditable', 'true');
-							}
-
-							if (GM_getValue('printPageBreak', false)) {
-								if (i < currentTour.geocaches.length - 1) {
-									cacheDetailTemp.style.pageBreakAfter = 'always';
-								}
-							}
-
+							var cacheDetailTemp = fillTemplate(markerMapping, ownMarkerTemplate);
 							body.appendChild(cacheDetailTemp);
 							body.appendChild(document.createElement('br'));
 
+							//~ geocaches.push(currentTour.geocaches[i]);
 						}
 
-					} else {
-
-						// map costum marker to uploadable version
-						var cm = currentTour.geocaches[i];
-						cm.index = i;
-						costumMarkers.push(cm);
-						// map costum marker to uploadable version - END -
-
-						var markerMapping = [
-							['GCID', $.gctour.lang('printviewMarker')],
-							['CACHECOUNT', (i + 1)],
-							['TYPE', currentTour.geocaches[i].image],
-							['NAME', currentTour.geocaches[i].name],
-							['COORDINATES', new LatLon(currentTour.geocaches[i].latitude, currentTour.geocaches[i].longitude).toString()],
-							['CONTENT', currentTour.geocaches[i].content.replace(/\n/g, "<br />")]
-						];
-
-						if (minimal) {
-							markerMapping.push(['HIDDENSTYLE', "hidden"]);
-						} else {
-							markerMapping.push(['HIDDENSTYLE', ""]);
-						}
-
-						var cacheDetailTemp = fillTemplate(markerMapping, ownMarkerTemplate);
-						body.appendChild(cacheDetailTemp);
-						body.appendChild(document.createElement('br'));
-
-						//~ geocaches.push(currentTour.geocaches[i]);
+						// set the progress
+						setProgress(i, currentTour.geocaches.length, document);
 					}
 
-					// set the progress
-					setProgress(i, currentTour.geocaches.length, document);
-				}
-
-				closeOverlayRemote(document)(); // close old ovleray (scraping data)
-				addProgressbar({
-					caption : $.gctour.lang('makeMapWait'),
-					_document : document,
-					closeCallback : function (_document) {
-						return function () {
-							GM_setValue("stopTask", true);
-							_document.defaultView.close();
-						};
-					}
-				}); // new overlay - getting maps
-				var cacheObject = {};
-				cacheObject.geocaches = geocaches;
-				cacheObject.costumMarkers = costumMarkers;
-				uploadMap(cacheObject,
-					function (result) {
-					try {
-						var overviewMapQuery = "";
-						var geocacheCodes = [];
-
-						for (var i = 0; i < currentTour.geocaches.length; ++i) {
-							var marker = currentTour.geocaches[i];
-
-							if (marker.wptcode) {
-								overviewMapQuery += marker.wptcode;
-							} else {
-								overviewMapQuery += (marker.id) ? marker.id : marker.gcid;
-								geocacheCodes.push((marker.id) ? marker.id : marker.gcid);
-							}
-
-							if (i < currentTour.geocaches.length - 1) {
-								overviewMapQuery += ",";
-							}
+					closeOverlayRemote(document)(); // close old ovleray (scraping data)
+					addProgressbar({
+						caption : $.gctour.lang('makeMapWait'),
+						_document : document,
+						closeCallback : function (_document) {
+							return function () {
+								GM_setValue("stopTask", true);
+								_document.defaultView.close();
+							};
 						}
+					}); // new overlay - getting maps
+					var cacheObject = {};
+					cacheObject.geocaches = geocaches;
+					cacheObject.costumMarkers = costumMarkers;
+					uploadMap(cacheObject,
+						function (result) {
+						try {
+							var overviewMapQuery = "";
+							var geocacheCodes = [];
 
-						var boo_OutlineMap = (
-							GM_getValue('printOutlineMap', true) &&
-							GM_getValue('printFrontpage', true) &&
-							!GM_getValue('printMinimal', false));
+							for (var i = 0; i < currentTour.geocaches.length; ++i) {
+								var marker = currentTour.geocaches[i];
 
-						// overview map
-						var mapCount = (boo_OutlineMap) ? 1 : 0;
-
-						mapCount += (GM_getValue('printOutlineMapSingle', true)) ? geocacheCodes.length : 0;
-
-						if (boo_OutlineMap) {
-							$("div#overview_map", document).first().append(getMapElement(overviewMapQuery, document));
-							setProgress(1, mapCount, document);
-						}
-
-						// map for each geocache
-						if (GM_getValue('printOutlineMapSingle', true)) {
-							for (var i = 0; i < geocacheCodes.length; ++i) {
-								var geocacheCode = geocacheCodes[i];
-								var mapElement = $("div#MAP_" + geocacheCode, document).first();
-
-								if (mapElement) {
-									mapElement.append(getMapElement(geocacheCode, document));
+								if (marker.wptcode) {
+									overviewMapQuery += marker.wptcode;
+								} else {
+									overviewMapQuery += (marker.id) ? marker.id : marker.gcid;
+									geocacheCodes.push((marker.id) ? marker.id : marker.gcid);
 								}
-								setProgress(i + 1, mapCount, document);
-							}
-						}
-						closeOverlayRemote(document)();
-					} catch (e) {
-						addErrorDialog({
-							caption : "Print error maps",
-							_document : document,
-							_exception : e,
-							closeCallback : function (_document) {
-								return function () {
-									GM_setValue("stopTask", true);
-									_document.defaultView.close();
-								};
-							}
-						});
-					}
 
+								if (i < currentTour.geocaches.length - 1) {
+									overviewMapQuery += ",";
+								}
+							}
+
+							var boo_OutlineMap = (
+								GM_getValue('printOutlineMap', true) &&
+								GM_getValue('printFrontpage', true) &&
+								!GM_getValue('printMinimal', false));
+
+							// overview map
+							var mapCount = (boo_OutlineMap) ? 1 : 0;
+
+							mapCount += (GM_getValue('printOutlineMapSingle', true)) ? geocacheCodes.length : 0;
+
+							if (boo_OutlineMap) {
+								$("div#overview_map", document).first().append(getMapElement(overviewMapQuery, document));
+								setProgress(1, mapCount, document);
+							}
+
+							// map for each geocache
+							if (GM_getValue('printOutlineMapSingle', true)) {
+								for (var i = 0; i < geocacheCodes.length; ++i) {
+									var geocacheCode = geocacheCodes[i];
+									var mapElement = $("div#MAP_" + geocacheCode, document).first();
+
+									if (mapElement) {
+										mapElement.append(getMapElement(geocacheCode, document));
+									}
+									setProgress(i + 1, mapCount, document);
+								}
+							}
+							closeOverlayRemote(document)();
+						} catch (e) {
+							addErrorDialog({
+								caption : "Print error maps",
+								_document : document,
+								_exception : e,
+								closeCallback : function (_document) {
+									return function () {
+										GM_setValue("stopTask", true);
+										_document.defaultView.close();
+									};
+								}
+							});
+						}
+
+					});
 				});
 			}
+
 		};
 	}
 
@@ -8894,6 +7662,7 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 	
 	// source of all evil asking groundspeak
 	function getGeocacheFromElement(element, maxLogsCount) {
+		console.log('getGeocacheFromElement',element, maxLogsCount);
 		var coordinates,
 		logLink,
 		minimal_geocache,
@@ -9011,7 +7780,7 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 		geocache.coordinates = $('span#uxLatLon', element).first().text();
 
 		// hole die userDefinedCoords aus GC Javascript
-		// ExampleString: var userDefinedCoords = {"status":"success","data":{"isUserDefined":false,"oldLatLngDisplay":"N 52° 31.268' E 013° 21.255'"}};
+		// ExampleString: var userDefinedCoords = {"status":"success","data":{"isUserDefined":false,"oldLatLngDisplay":"N 52Â° 31.268' E 013Â° 21.255'"}};
 		// var userDefinedCoordsString = element.innerHTML.split("var userDefinedCoords = {")[1].split("};")[0];
 		//var userDefinedCoordsString = element.innerHTML.split("var userDefinedCoords = {") || "";
 		//userDefinedCoordsString = userDefinedCoordsString[1] || "";
@@ -9165,28 +7934,36 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 
 		// hole den UserToken und benutze ihn um die Logs einzusammeln
 		var userToken = element.innerHTML.split("userToken = '")[1].split("'")[0];
-		geocache.logs = getLogs(userToken, maxLogsCount);
-
-		log("fn getGeocacheFromElement - geocache.logs.length: " + geocache.logs.length);
-
-		return geocache;
+		return new Promise(function (resolve, reject) {
+//			geocache.logs=[];
+//			resolve(geocache);
+			getLogs(userToken, maxLogsCount).then(function (logs) {
+				geocache.logs = logs;
+				resolve(geocache);
+			},reject);
+		});
 	}
 
 	function getGeocache(gcid, maxLogsCount) {
-		var response = GM_xmlhttpRequest({
-				method : "GET",
-				url : HTTP + '//www.geocaching.com/seek/cache_details.aspx?log=y&wp=' + gcid,
-				synchronous : true
-			});
-
-		// after execution parse the result
-		var response_div = createElement('div');
-		response_div.innerHTML = response.responseText;
-
-		GM_setValue("debug_lastgcid", gcid);
-		GM_setValue("debug_lastcachesite", response.responseText);
-
-		return getGeocacheFromElement(response_div, maxLogsCount);
+		return new Promise(function(resolve,reject){
+			var req = new XMLHttpRequest();
+			req.open("GET",HTTP + '//www.geocaching.com/seek/cache_details.aspx?log=y&wp=' + gcid);
+			req.onreadystatechange = function () {
+				if (req.readyState === 4) {
+					// after execution parse the result
+					var response_div = createElement('div');
+					response_div.innerHTML = req.responseText;
+					GM_setValue("debug_lastgcid", gcid);
+					GM_setValue("debug_lastcachesite", req.responseText);
+					return getGeocacheFromElement(response_div, maxLogsCount).then(resolve,reject);
+				}
+			};
+			req.onerror = function () {
+				console.log(req.error);
+				reject(index);
+			};
+			req.send();
+		});
 	}
 
 	// return an object with this attributes: gcid, cacheid, guid, typeimage, name
@@ -9319,77 +8096,53 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 	}
 
 	function getLogs(userToken, maxLogsCount) {
-		maxLogsCount = $.isNumeric(maxLogsCount) ? maxLogsCount : 25; // optionaler Parameter default = 25, kann auch 0 sein
-		var i = 1,
-		numLogsPages = (maxLogsCount < 100) ? 25 : 100, // wieviel Logs je Request
-		logs = [],
-		urlTemplate = HTTP + '//www.geocaching.com/seek/geocache.logbook?tkn=' + userToken + '&idx=#PAGE#&num=#NUM#&decrypt=false',
-		url,
-		n,
-		log_obj = {},
-		req = new XMLHttpRequest(),
-		booA,
-		booB;
+		return new Promise(function (resolve, reject) {
+			maxLogsCount = $.isNumeric(maxLogsCount) ? maxLogsCount : 25; // optionaler Parameter default = 25, kann auch 0 sein
+			if (maxLogsCount <= 0) {
+				resolve(logs);
+			}else{
+				var page = 1,
+					numLogsPages = (maxLogsCount < 100) ? 25 : 100, // wieviel Logs je Request
+					logs = [],
+					log_obj = {},
+					urlTemplate = HTTP + '//www.geocaching.com/seek/geocache.logbook?tkn=' + userToken + '&idx=#PAGE#&num=#NUM#&decrypt=false',
+					
+					recur = function () {
+						return new Promise(function (resolve, reject) {
+							var req = new XMLHttpRequest();
+							req.open("GET", urlTemplate.replace("#PAGE#", page).replace("#NUM#", numLogsPages));
+							req.onreadystatechange = function () {
+								if (req.readyState === 4) {
+									// after execution parse the result
+									log_obj = JSON.parse(req.responseText);
 
-		if (maxLogsCount <= 0) {
-			return logs;
-		}
-
-		do {
-			url = urlTemplate.replace("#PAGE#", i).replace("#NUM#", numLogsPages);
-
-			var response = GM_xmlhttpRequest({
-					method : "GET",
-					url : url,
-					synchronous : true
-				});
-
-			// after execution parse the result
-			log_obj = JSON.parse(response.responseText);
-
-			// füge alle ankommenden logs an das bestehende Array einfach hinten dran!
-			logs = logs.concat(log_obj.data);
-
-			//~ LogID               273160821
-			//~ CacheID             2436701
-			//~ LogGuid             "8fd33a36-bb44-40ed-9b8b-41737e2d0c6a"
-			//~ Latitude            null
-			//~ Longitude           null
-			//~ LatLonString        ""
-			//~ LogType             "Found it"
-			//~ LogTypeImage        "2.png"
-			//~ LogText             "Schönes Versteck, süße ...>Lisa, Yvonne und Frank"
-			//~ Created             "10/14/2012"
-			//~ Visited             "10/14/2012"
-			//~ UserName            "sweet cats"
-			//~ MembershipLevel     "1"
-			//~ AccountID            6385212
-			//~ AccountGuid          "0260fb1b-7cf1-4ef5-a3b6-6257276e3962"
-			//~ Email                ""
-			//~ AvatarImage          "99ff8cf2-7b7a-49a9-bb90-a38448158223.jpg"
-			//~ GeocacheFindCount    33
-			//~ GeocacheHideCount    0
-			//~ ChallengesCompleted  0
-			//~ IsEncoded            false
-			//~ creator              Object { GroupTitle="Member", GroupImageUrl="/images/icons/reg_user.gif"}
-			//~ GroupTitle           "Member"
-			//~ GroupImageUrl        "/images/icons/reg_user.gif"
-			//~ Images                []
-			//~ debug(logs[0].UserName);
-
-			i++;
-			booA = (i <= log_obj.pageInfo.totalPages); // gibt es noch eine Seite danach ?
-			booB = (logs.length < maxLogsCount); // maximale gewünschte Anzahl Logs noch nicht erreicht ?
-
-		} while (booA && booB); // nächster Request ?
-
-		// LogArray ggf. kürzen
-		if (logs.length > maxLogsCount) {
-			n = maxLogsCount - logs.length;
-			logs = logs.slice(0, n);
-		}
-
-		return logs;
+									// füge alle ankommenden logs an das bestehende Array einfach hinten dran!
+									logs = logs.concat(log_obj.data);
+									page++;
+									if ((page <= log_obj.pageInfo.totalPages) && (logs.length < maxLogsCount)) { // (gibt es noch eine Seite) && (maximale gewünschte Anzahl Logs noch nicht erreicht) => nächster Request ?
+										recur().then(resolve,reject);
+									}else{
+										resolve(logs);
+									}
+								}
+							};
+							req.onerror = function () {
+								reject(req.error);
+							};
+							req.send();
+						}).catch(reject);
+					};
+					
+				return recur().then(function (logs) {
+						// LogArray ggf. kürzen
+						if (logs.length > maxLogsCount) {
+							logs = logs.slice(0, maxLogsCount - logs.length);
+						}
+						log('getLogs resolve 2');
+						resolve(logs);
+				},reject);
+			}
+		});
 	}
 
 	function getAttributeXML(attribute_a) {
@@ -9422,381 +8175,372 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 	}
 
 	function getGPXGeoCache(gcid) {
-		var i; // for ()
-		var geocache = {},
-		maxGPXLogs = parseInt(GM_getValue('maxGPXLogs', 10), 10),
-		geocache_obj = getGeocache(gcid, maxGPXLogs);
+		return getGeocache(gcid, parseInt(GM_getValue('maxGPXLogs', 10), 10)).then(function (geocache_obj) {
+			return new Promise(function (resolve, reject) {
+				if (geocache_obj === "pm only") {
+					reject(geocache_obj);
+				} else {
 
-		if (geocache_obj === "pm only") {
-			return geocache_obj;
-		}
+					var i, // for ()
+							geocache = {};
+					/*
+					 geocache.gcid
+					 .guid
+					 .cacheid
+					 .name
+					 .type
+					 .owner
+					 .hidden
+					 .coordinates
+					 .lat
+					 .lon
+					 .location
+					 .state
+					 .country
+					 .bearing
+					 .distance
+					 .inventory
+					 .size
+					 .difficulty
+					 .terrain
+					 .attributes
+					 .short_description
+					 .long_description
+					 .hint
+					 .images
+					 .additional_waypoints
+					 .find_counts
+					 .logs
+					 */
 
-		/*
-		geocache.gcid
-		.guid
-		.cacheid
-		.name
-		.type
-		.owner
-		.hidden
-		.coordinates
-		.lat
-		.lon
-		.location
-		.state
-		.country
-		.bearing
-		.distance
-		.inventory
-		.size
-		.difficulty
-		.terrain
-		.attributes
-		.short_description
-		.long_description
-		.hint
-		.images
-		.additional_waypoints
-		.find_counts
-		.logs
-		 */
+					geocache.gcid = geocache_obj.gcid;
+					if (GM_getValue('gpxstripgc', false)) {
+						geocache.gcid = geocache.gcid.replace(/GC/, '');
+					}
 
-		geocache.gcid = geocache_obj.gcid;
-		if (GM_getValue('gpxstripgc', false)) {
-			geocache.gcid = geocache.gcid.replace(/GC/, '');
-		}
+					geocache.guid = geocache_obj.guid;
 
-		geocache.guid = geocache_obj.guid;
+					geocache.cacheid = geocache_obj.cacheid;
+					geocache.archived = (geocache_obj.archived) ? "True" : "False";
+					geocache.available = (geocache_obj.available) ? "True" : "False";
 
-		geocache.cacheid = geocache_obj.cacheid;
-		geocache.archived = (geocache_obj.archived) ? "True" : "False";
-		geocache.available = (geocache_obj.available) ? "True" : "False";
+					geocache.cacheName = geocache_obj.name;
+					geocache.cacheOwner = geocache_obj.owner;
+					geocache.cacheType = geocache_obj.type;
+					geocache.cacheSize = geocache_obj.size;
+					geocache.cacheSym = geocache_obj.sym;
 
-		geocache.cacheName = geocache_obj.name;
-		geocache.cacheOwner = geocache_obj.owner;
-		geocache.cacheType = geocache_obj.type;
-		geocache.cacheSize = geocache_obj.size;
-		geocache.cacheSym = geocache_obj.sym;
+					switch (geocache_obj.type) {
+						case "micro":
+							geocache.cacheSize = "Micro";
+							break;
+						case "small":
+							geocache.cacheSize = "Small";
+							break;
+						case "regular":
+							geocache.cacheSize = "Regular";
+							break;
+						case "large":
+							geocache.cacheSize = "Large";
+							break;
+						case "other":
+							geocache.cacheSize = "Other";
+							break;
+						case "not_chosen":
+							geocache.cacheSize = "Not chosen";
+							break;
+						case "virtual":
+							geocache.cacheSize = "Virtual";
+							break;
+						default:
+							geocache.cacheType = "";
+							break;
+					}
 
-		switch (geocache_obj.type) {
-		case "micro":
-			geocache.cacheSize = "Micro";
-			break;
-		case "small":
-			geocache.cacheSize = "Small";
-			break;
-		case "regular":
-			geocache.cacheSize = "Regular";
-			break;
-		case "large":
-			geocache.cacheSize = "Large";
-			break;
-		case "other":
-			geocache.cacheSize = "Other";
-			break;
-		case "not_chosen":
-			geocache.cacheSize = "Not chosen";
-			break;
-		case "virtual":
-			geocache.cacheSize = "Virtual";
-			break;
-		default:
-			geocache.cacheType = "";
-			break;
-		}
+					// define the cache type
+					// if the GPX type is Groundspeak - parse type through the wptArr from autotour:
 
-		// define the cache type
-		// if the GPX type is Groundspeak - parse type through the wptArr from autotour:
+					for (i = 0; i < wptArray.length; i++) {
+						if (wptArray[i].wptTypeId == geocache_obj.type) {
+							geocache.cacheType = wptArray[i].name;
+						}
+					}
 
-		for (i = 0; i < wptArray.length; i++) {
-			if (wptArray[i].wptTypeId == geocache_obj.type) {
-				geocache.cacheType = wptArray[i].name;
-			}
-		}
+					geocache.attributes_array = geocache_obj.attributes_array;
+					geocache.difficulty = geocache_obj.difficulty;
+					geocache.terrain = geocache_obj.terrain;
 
-		geocache.attributes_array = geocache_obj.attributes_array;
-		geocache.difficulty = geocache_obj.difficulty;
-		geocache.terrain = geocache_obj.terrain;
+					// get the summery and the description
+					var summary = geocache_obj.short_description,
+							description = geocache_obj.long_description;
 
-		// get the summery and the description
-		var summary = geocache_obj.short_description,
-		description = geocache_obj.long_description;
+					if (GM_getValue('gpxhtml', true)) {
+						geocache.longDescription = (description.length === 1) ? description.html() : "";
+						geocache.shortDescription = (summary.length === 1) ? summary.html() : "";
+					} else {
+						geocache.longDescription = (description.length === 1) ? description.text() : "";
+						geocache.shortDescription = (summary.length === 1) ? summary.text() : "";
+					}
 
-		if (GM_getValue('gpxhtml', true)) {
-			geocache.longDescription = (description.length === 1) ? description.html() : "";
-			geocache.shortDescription = (summary.length === 1) ? summary.html() : "";
-		} else {
-			geocache.longDescription = (description.length === 1) ? description.text() : "";
-			geocache.shortDescription = (summary.length === 1) ? summary.text() : "";
-		}
+					geocache.hint = geocache_obj.hint;
+					geocache.state = geocache_obj.state;
+					geocache.country = geocache_obj.country;
 
-		geocache.hint = geocache_obj.hint;
-		geocache.state = geocache_obj.state;
-		geocache.country = geocache_obj.country;
+					// hidden Date
+					geocache.dateHidden = geocache_obj.hidden;
 
-		// hidden Date
-		geocache.dateHidden = geocache_obj.hidden;
+					geocache.logs = [];
 
-		geocache.logs = [];
+					for (i = 0; i < geocache_obj.logs.length; i++) {
+						var logObj = {};
 
-		for (i = 0; i < geocache_obj.logs.length; i++) {
-			var logObj = {};
+						// from: "madd.in"
+						// type: "Found It", "Didn't find it", "Temporarily Disable Listing", "Write note", "Enable Listing",...
+						//  text: "Netter Log eintrag."
+						// logdate: "August 18" oder "February 17, 2007"
+						// id: 12345679
 
-			// from: "madd.in"
-			// type: "Found It", "Didn't find it", "Temporarily Disable Listing", "Write note", "Enable Listing",...
-			//  text: "Netter Log eintrag."
-			// logdate: "August 18" oder "February 17, 2007"
-			// id: 12345679
+						var gc_log = geocache_obj.logs[i];
+						logObj.cacherName = gc_log.UserName;
+						logObj.type = gc_log.LogType;
 
-			var gc_log = geocache_obj.logs[i];
-			logObj.cacherName = gc_log.UserName;
-			logObj.type = gc_log.LogType;
+						//    debug("Logtype: "+gc_log.LogType+ " to GPX Type:"+logObj.type);
+						logObj.foundDate = parseDate(gc_log.Created);
+						logObj.content = gc_log.LogText;
+						logObj.id = gc_log.LogID;
 
-			//    debug("Logtype: "+gc_log.LogType+ " to GPX Type:"+logObj.type);
-			logObj.foundDate = parseDate(gc_log.Created);
-			logObj.content = gc_log.LogText;
-			logObj.id = gc_log.LogID;
+						// jobs done great - lets save this
+						geocache.logs.push(logObj);
+					}
 
-			// jobs done great - lets save this
-			geocache.logs.push(logObj);
-		}
+					//additionalWaypoints
+					geocache.additionalWaypoints = geocache_obj.additional_waypoints;
 
-		//additionalWaypoints
-		geocache.additionalWaypoints = geocache_obj.additional_waypoints;
+					geocache.latitude = geocache_obj.lat;
+					geocache.longitude = geocache_obj.lon;
 
-		geocache.latitude = geocache_obj.lat;
-		geocache.longitude = geocache_obj.lon;
+//					log([
+//						"--------------[START " + geocache.gcid + "]-------------",
+//						"gcid: \t\t" + geocache.gcid,
+//						"guid: \t\t" + geocache.guid,
+//						"cacheid: \t" + geocache.cacheid,
+//						"archived: \t" + geocache.archived,
+//						"available: \t" + geocache.available,
+//						"cacheName:\t" + geocache.cacheName,
+//						"cacheSym (GPX):\t" + geocache.cacheSym,
+//						"cacheOwner:\t" + geocache.cacheOwner,
+//						"dateHidden:\t" + geocache.dateHidden,
+//						"cacheType:\t" + geocache.cacheType,
+//						"cacheSize:\t" + geocache.cacheSize,
+//						"difficulty:\t" + geocache.difficulty,
+//						"terrain:\t" + geocache.terrain,
+//						//~ "latLon:\t"       + geocache.latLon.innerHTML,
+//						"latitude:\t" + geocache.latitude,
+//						"longitude:\t" + geocache.longitude,
+//						"state:\t\t" + geocache.state,
+//						"country:\t" + geocache.country,
+//						"shortDescription:\n\n" + geocache.shortDescription,
+//						"longDescription:\n\n" + geocache.longDescription,
+//						"hint:\t\t" + geocache.hint,
+//						"--------------[END " + geocache.gcid + "]--------------"
+//					].join("\n"));
 
-		log([
-				"--------------[START " + geocache.gcid + "]-------------",
-				"gcid: \t\t" + geocache.gcid,
-				"guid: \t\t" + geocache.guid,
-				"cacheid: \t" + geocache.cacheid,
-				"archived: \t" + geocache.archived,
-				"available: \t" + geocache.available,
-				"cacheName:\t" + geocache.cacheName,
-				"cacheSym (GPX):\t" + geocache.cacheSym,
-				"cacheOwner:\t" + geocache.cacheOwner,
-				"dateHidden:\t" + geocache.dateHidden,
-				"cacheType:\t" + geocache.cacheType,
-				"cacheSize:\t" + geocache.cacheSize,
-				"difficulty:\t" + geocache.difficulty,
-				"terrain:\t" + geocache.terrain,
-				//~ "latLon:\t"       + geocache.latLon.innerHTML,
-				"latitude:\t" + geocache.latitude,
-				"longitude:\t" + geocache.longitude,
-				"state:\t\t" + geocache.state,
-				"country:\t" + geocache.country,
-				"shortDescription:\n\n" + geocache.shortDescription,
-				"longDescription:\n\n" + geocache.longDescription,
-				"hint:\t\t" + geocache.hint,
-				"--------------[END " + geocache.gcid + "]--------------"
-			].join("\n"));
-
-		return geocache;
+					resolve(geocache);
+				}
+			});
+		});
 	}
 
 	function getGPX() {
-		var i,
-		ii,
-		iii; // for ()
+		var i, ii, iii;  // for ()
 
 		var gpxHeader =
-			'<?xml version="1.0" encoding="utf-8"?>\n' +
-			'<gpx xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" version="1.0" creator="GCTour" xsi:schemaLocation="http://www.topografix.com/GPX/1/0 http://www.topografix.com/GPX/1/0/gpx.xsd http://www.groundspeak.com/cache/1/0/1 http://www.groundspeak.com/cache/1/0/1/cache.xsd" xmlns="http://www.topografix.com/GPX/1/0">\n' +
-			'  <name>' + encodeHtml(currentTour.name) + '</name>\n' +
-			'  <desc>This is an individual cache generated from Geocaching.com</desc>\n' +
-			'  <author>GCTour v' + VERSION + '.' + BUILD + ' revision ' + REVISION + '</author>\n' +
-			'  <email>gctour@madd.in</email>\n' +
-			'  <url>http://www.geocaching.com</url>\n' +
-			'  <urlname>Geocaching - High Tech Treasure Hunting</urlname>\n' +
-			'  <time>' + xsdDateTime(new Date()) + '</time>\n' +
-			'  <keywords>cache, geocache</keywords>\n' +
-			'  <bounds minlat="##MINLAT##" minlon="##MINLON##" maxlat="##MAXLAT##" maxlon="##MAXLON##" />\n' +
-			'##GEOCACHES##\n' +
-			'##WAYPOINTS##\n' +
-			'</gpx>';
+				'<?xml version="1.0" encoding="utf-8"?>\n' +
+				'<gpx xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" version="1.0" creator="GCTour" xsi:schemaLocation="http://www.topografix.com/GPX/1/0 http://www.topografix.com/GPX/1/0/gpx.xsd http://www.groundspeak.com/cache/1/0/1 http://www.groundspeak.com/cache/1/0/1/cache.xsd" xmlns="http://www.topografix.com/GPX/1/0">\n' +
+				'  <name>' + encodeHtml(currentTour.name) + '</name>\n' +
+				'  <desc>This is an individual cache generated from Geocaching.com</desc>\n' +
+				'  <author>GCTour v' + VERSION + '.' + BUILD + ' revision ' + REVISION + '</author>\n' +
+				'  <email>gctour@madd.in</email>\n' +
+				'  <url>http://www.geocaching.com</url>\n' +
+				'  <urlname>Geocaching - High Tech Treasure Hunting</urlname>\n' +
+				'  <time>' + xsdDateTime(new Date()) + '</time>\n' +
+				'  <keywords>cache, geocache</keywords>\n' +
+				'  <bounds minlat="##MINLAT##" minlon="##MINLON##" maxlat="##MAXLAT##" maxlon="##MAXLON##" />\n' +
+				'##GEOCACHES##\n' +
+				'##WAYPOINTS##\n' +
+				'</gpx>';
 
 		var geocacheTemplate =
-			'<wpt lat="##LAT##" lon="##LON##">\n' +
-			'  <time>##TIME##</time>\n' +
-			'  <name>##GCID##</name>\n' +
-			'  <desc>##CACHENAME## by ##OWNER##, ##TYPE## (##DIFFICULTY##/##TERRAIN##)</desc>\n' + //'  <url>http://www.geocaching.com/seek/cache_details.aspx?wp=##GCID##</url>\n' +
-			'  <url>http://www.geocaching.com/seek/cache_details.aspx?guid=##GUID##</url>\n' +
-			'  <urlname>##CACHENAME##</urlname>\n' +
-			'  <sym>##CACHESYM##</sym>\n' +
-			'  <type>Geocache|##TYPE##</type>\n' +
-			'  <groundspeak:cache id="##CACHEID##" available="##AVAILABLE##" archived="##ARCHIVED##" xmlns:groundspeak="http://www.groundspeak.com/cache/1/0/1">\n' +
-			'    <groundspeak:name>##CACHENAME##</groundspeak:name>\n' +
-			'    <groundspeak:placed_by>##OWNER##</groundspeak:placed_by>\n' +
-			'    <groundspeak:owner>##OWNER##</groundspeak:owner>\n' +
-			'    <groundspeak:type>##TYPE##</groundspeak:type>\n' +
-			'    <groundspeak:container>##CONTAINER##</groundspeak:container>\n' +
-			'    <groundspeak:attributes>\n##ATTRIBUTES##    </groundspeak:attributes>\n' +
-			'    <groundspeak:difficulty>##DIFFICULTY##</groundspeak:difficulty>\n' +
-			'    <groundspeak:terrain>##TERRAIN##</groundspeak:terrain>\n' +
-			'    <groundspeak:country>##COUNTRY##</groundspeak:country>\n' +
-			'    <groundspeak:state>##STATE##</groundspeak:state>\n' +
-			'    <groundspeak:short_description html="True">##SUMMARY##</groundspeak:short_description>\n' +
-			'    <groundspeak:long_description html="True">##DESCRIPTION##</groundspeak:long_description>\n' +
-			'    <groundspeak:encoded_hints>##HINT##</groundspeak:encoded_hints>\n' +
-			'    <groundspeak:logs>\n##LOGS##    </groundspeak:logs>\n' +
-			'  </groundspeak:cache>\n' +
-			'</wpt>';
+				'<wpt lat="##LAT##" lon="##LON##">\n' +
+				'  <time>##TIME##</time>\n' +
+				'  <name>##GCID##</name>\n' +
+				'  <desc>##CACHENAME## by ##OWNER##, ##TYPE## (##DIFFICULTY##/##TERRAIN##)</desc>\n' + //'  <url>http://www.geocaching.com/seek/cache_details.aspx?wp=##GCID##</url>\n' +
+				'  <url>http://www.geocaching.com/seek/cache_details.aspx?guid=##GUID##</url>\n' +
+				'  <urlname>##CACHENAME##</urlname>\n' +
+				'  <sym>##CACHESYM##</sym>\n' +
+				'  <type>Geocache|##TYPE##</type>\n' +
+				'  <groundspeak:cache id="##CACHEID##" available="##AVAILABLE##" archived="##ARCHIVED##" xmlns:groundspeak="http://www.groundspeak.com/cache/1/0/1">\n' +
+				'    <groundspeak:name>##CACHENAME##</groundspeak:name>\n' +
+				'    <groundspeak:placed_by>##OWNER##</groundspeak:placed_by>\n' +
+				'    <groundspeak:owner>##OWNER##</groundspeak:owner>\n' +
+				'    <groundspeak:type>##TYPE##</groundspeak:type>\n' +
+				'    <groundspeak:container>##CONTAINER##</groundspeak:container>\n' +
+				'    <groundspeak:attributes>\n##ATTRIBUTES##    </groundspeak:attributes>\n' +
+				'    <groundspeak:difficulty>##DIFFICULTY##</groundspeak:difficulty>\n' +
+				'    <groundspeak:terrain>##TERRAIN##</groundspeak:terrain>\n' +
+				'    <groundspeak:country>##COUNTRY##</groundspeak:country>\n' +
+				'    <groundspeak:state>##STATE##</groundspeak:state>\n' +
+				'    <groundspeak:short_description html="True">##SUMMARY##</groundspeak:short_description>\n' +
+				'    <groundspeak:long_description html="True">##DESCRIPTION##</groundspeak:long_description>\n' +
+				'    <groundspeak:encoded_hints>##HINT##</groundspeak:encoded_hints>\n' +
+				'    <groundspeak:logs>\n##LOGS##    </groundspeak:logs>\n' +
+				'  </groundspeak:cache>\n' +
+				'</wpt>';
 
 		var geocacheLogTemplate =
-			'      <groundspeak:log id="##LOGID##">\n' +
-			'        <groundspeak:date>##TIME##</groundspeak:date>\n' +
-			'        <groundspeak:type>##LOGTYPE##</groundspeak:type>\n' +
-			'        <groundspeak:finder>##CACHERNAME##</groundspeak:finder>\n' +
-			'        <groundspeak:text encoded="False">##LOGTEXT##</groundspeak:text>\n' +
-			'      </groundspeak:log>\n';
+				'      <groundspeak:log id="##LOGID##">\n' +
+				'        <groundspeak:date>##TIME##</groundspeak:date>\n' +
+				'        <groundspeak:type>##LOGTYPE##</groundspeak:type>\n' +
+				'        <groundspeak:finder>##CACHERNAME##</groundspeak:finder>\n' +
+				'        <groundspeak:text encoded="False">##LOGTEXT##</groundspeak:text>\n' +
+				'      </groundspeak:log>\n';
 
-		var gcStrArray = [],
-		wptStrArray = [],
-		minLat,
-		minLon,
-		maxLat,
-		maxLon;
+		var cache_strings = [],
+			waypoint_strings = [],
+			minLat, minLon,
+			maxLat, maxLon,
+			promises=[],
+			progress=0,
+			tour_length=currentTour.geocaches.length;
 
-		for (i = 0; i < currentTour.geocaches.length; i++) {
+		for (i = 0; i < tour_length; i++) {
+			(function(cache){
+				promises.push(new Promise(function (resolve, reject) {
+					if (GM_getValue("stopTask", false)) {
+						reject("canceled");
+					} else if (typeof cache.latitude !== "undefined") {
+						waypoint_strings.push(getGPXfromMarker(cache));
+						log('resolved '+cache.id);
+						setProgress(++progress, tour_length, document);
+						resolve(true);
+					} else {
+						getGPXGeoCache(cache.id).then(function (geocache) {
+							setProgress(++progress, tour_length, document);
+							if (geocache !== "pm only") {
+								debug("GS GPX: geocache.dateHidden:'" + geocache.dateHidden + "' -> xsd:'" + xsdDateTime(geocache.dateHidden) + "'");
+								var logs = geocache.logs;
+								var logsStringArray = [];
+								var attributeLog, attributeLogtext;
 
-			// iff the cancelbutton is presssed
-			if (GM_getValue("stopTask", false)) {
-				GM_setValue("stopTask", false);
-				return "canceled"; // then return!
-			}
+								// create log with attributes!
+								if (GM_getValue('gpxattributestolog', false)) {
+									attributeLogtext = $.map(geocache.attributes_array, function (row, i) {
+										return row[2] + ": " + ((row[3] === 1) ? "yes" : "no");
+									}).join("\n");
 
-			var costumMarker = (typeof(currentTour.geocaches[i].latitude) != "undefined");
+									attributeLog = geocacheLogTemplate;
+									attributeLog = attributeLog.replace(/##LOGID##/g, geocache.cacheid)
+											.replace(/##TIME##/g, xsdDateTime(new Date()))
+											.replace(/##CACHERNAME##/g, "GCTour")
+											.replace(/##LOGTYPE##/g, "Write note")
+											.replace(/##LOGTEXT##/g, attributeLogtext);
+									logsStringArray.push(attributeLog);
+								}
 
-			if (!costumMarker) {
+								// just max 200 logs in the gpx
+								for (ii = 0; (ii < logs.length && ii < 200); ii++) {
+									var geocacheLogMapping = [
+										['LOGID', logs[ii].id], // Issue3
+										['TIME', xsdDateTime(logs[ii].foundDate)],
+										['CACHERNAME', encodeHtml(logs[ii].cacherName)],
+										['LOGTYPE', logs[ii].type],
+										['LOGTEXT', encodeHtml($("<div/>").html(logs[ii].content.br2space()).text().trimAll())]
+									];
 
-				var geocache = getGPXGeoCache(currentTour.geocaches[i].id);
-				if (geocache !== "pm only") {
-					debug("GS GPX: geocache.dateHidden:'" + geocache.dateHidden + "' -> xsd:'" + xsdDateTime(geocache.dateHidden) + "'");
-					var logs = geocache.logs;
-					var logsStringArray = [];
-					var attributeLog,
-					attributeLogtext;
+									var cacheWaypointLog = geocacheLogTemplate;
 
-					// create log with attributes!
-					if (GM_getValue('gpxattributestolog', false)) {
-						attributeLogtext = $.map(geocache.attributes_array, function (row, i) {
-								return row[2] + ": " + ((row[3] === 1) ? "yes" : "no");
-							}).join("\n");
+									for (iii = 0; iii < geocacheLogMapping.length; iii++) {
+										cacheWaypointLog = cacheWaypointLog.replace(new RegExp("##" + geocacheLogMapping[iii][0] + "##", "g"), geocacheLogMapping[iii][1]);
+									}
 
-						attributeLog = geocacheLogTemplate;
-						attributeLog = attributeLog.replace(/##LOGID##/g, geocache.cacheid)
-							.replace(/##TIME##/g, xsdDateTime(new Date()))
-							.replace(/##CACHERNAME##/g, "GCTour")
-							.replace(/##LOGTYPE##/g, "Write note")
-							.replace(/##LOGTEXT##/g, attributeLogtext);
-						logsStringArray.push(attributeLog);
+									logsStringArray.push(cacheWaypointLog);
+								}
+
+								var attributesString = "";
+								for (ii = 0; (ii < geocache.attributes_array.length); ii++) {
+									attributesString += getAttributeXML(geocache.attributes_array[ii]);
+								}
+
+								var geocacheMapping = [
+									['LAT', geocache.latitude],
+									['LON', geocache.longitude],
+									['TIME', xsdDateTime(geocache.dateHidden)],
+									['GCID', geocache.gcid],
+									['CACHEID', geocache.cacheid],
+									['GUID', geocache.guid],
+									['AVAILABLE', geocache.available],
+									['ARCHIVED', geocache.archived],
+									['CACHENAME', encodeHtml(geocache.cacheName)],
+									['CACHESYM', geocache.cacheSym],
+									['OWNER', encodeHtml(geocache.cacheOwner)],
+									['STATE', encodeHtml(geocache.state)],
+									['COUNTRY', encodeHtml(geocache.country)],
+									['TYPE', geocache.cacheType],
+									['CONTAINER', geocache.cacheSize],
+									['ATTRIBUTES', attributesString],
+									['DIFFICULTY', geocache.difficulty],
+									['TERRAIN', geocache.terrain],
+									['SUMMARY', encodeHtml(geocache.shortDescription)],
+									['DESCRIPTION', encodeHtml(geocache.longDescription)],
+									['HINT', encodeHtml(geocache.hint)],
+									['LOGS', logsStringArray.join("")]
+								];
+
+								maxLat = Math.max(maxLat||0,geocache.latitude);
+								maxLon = Math.max(maxLon||0,geocache.longitude);
+								minLat = Math.min(minLat||geocache.latitude,geocache.latitude);
+								minLon = Math.min(minLon||geocache.longitude,geocache.longitude);
+
+								var cacheWaypoint = geocacheTemplate;
+
+								for (ii = 0; ii < geocacheMapping.length; ii++) {
+									cacheWaypoint = cacheWaypoint.replace(new RegExp("##" + geocacheMapping[ii][0] + "##", "g"), geocacheMapping[ii][1]);
+								}
+
+								cache_strings.push(cacheWaypoint);
+
+								if (GM_getValue('gpxwpts', true)) {
+									for (iii = 0; iii < geocache.additionalWaypoints.length; iii++) {
+										// vielleicht sollte man die ??? Wegpunkte in die Nähe des Geocaches legen => Man hätte sie auf dem Gerät!
+										if (geocache.additionalWaypoints[iii].coordinates !== "???") {
+											waypoint_strings.push(getWaypointsGPXFromGeocache(geocache.additionalWaypoints[iii], geocache));
+										}
+									}
+								}
+							} // pm only check
+							log('resolved '+cache.id);
+							resolve(true);
+						},reject);
 					}
-
-					// just max 200 logs in the gpx
-					for (ii = 0; (ii < logs.length && ii < 200); ii++) {
-						var geocacheLogMapping = [
-							['LOGID', logs[ii].id], // Issue3
-							['TIME', xsdDateTime(logs[ii].foundDate)],
-							['CACHERNAME', encodeHtml(logs[ii].cacherName)],
-							['LOGTYPE', logs[ii].type],
-							['LOGTEXT', encodeHtml($("<div/>").html(logs[ii].content.br2space()).text().trimAll())]
-						];
-
-						var cacheWaypointLog = geocacheLogTemplate;
-
-						for (iii = 0; iii < geocacheLogMapping.length; iii++) {
-							cacheWaypointLog = cacheWaypointLog.replace(new RegExp("##" + geocacheLogMapping[iii][0] + "##", "g"), geocacheLogMapping[iii][1]);
-						}
-
-						logsStringArray.push(cacheWaypointLog);
-					}
-
-					var attributesString = "";
-					for (ii = 0; (ii < geocache.attributes_array.length); ii++) {
-						attributesString += getAttributeXML(geocache.attributes_array[ii]);
-					}
-
-					var geocacheMapping = [
-						['LAT', geocache.latitude],
-						['LON', geocache.longitude],
-						['TIME', xsdDateTime(geocache.dateHidden)],
-						['GCID', geocache.gcid],
-						['CACHEID', geocache.cacheid],
-						['GUID', geocache.guid],
-						['AVAILABLE', geocache.available],
-						['ARCHIVED', geocache.archived],
-						['CACHENAME', encodeHtml(geocache.cacheName)],
-						['CACHESYM', geocache.cacheSym],
-						['OWNER', encodeHtml(geocache.cacheOwner)],
-						['STATE', encodeHtml(geocache.state)],
-						['COUNTRY', encodeHtml(geocache.country)],
-						['TYPE', geocache.cacheType],
-						['CONTAINER', geocache.cacheSize],
-						['ATTRIBUTES', attributesString],
-						['DIFFICULTY', geocache.difficulty],
-						['TERRAIN', geocache.terrain],
-						['SUMMARY', encodeHtml(geocache.shortDescription)],
-						['DESCRIPTION', encodeHtml(geocache.longDescription)],
-						['HINT', encodeHtml(geocache.hint)],
-						['LOGS', logsStringArray.join("")]
-					];
-
-					if (!maxLat) {
-						maxLat = geocache.latitude;
-						minLat = geocache.latitude;
-						maxLon = geocache.longitude;
-						minLon = geocache.longitude;
-					}
-
-					maxLat = (maxLat < geocache.latitude) ? geocache.latitude : maxLat;
-					maxLon = (maxLon < geocache.longitude) ? geocache.longitude : maxLon;
-					minLon = (minLon > geocache.longitude) ? geocache.longitude : minLon;
-					minLat = (minLat > geocache.latitude) ? geocache.latitude : minLat;
-
-					var cacheWaypoint = geocacheTemplate;
-
-					for (ii = 0; ii < geocacheMapping.length; ii++) {
-						cacheWaypoint = cacheWaypoint.replace(new RegExp("##" + geocacheMapping[ii][0] + "##", "g"), geocacheMapping[ii][1]);
-					}
-
-					gcStrArray.push(cacheWaypoint);
-
-					if (GM_getValue('gpxwpts', true)) {
-						for (iii = 0; iii < geocache.additionalWaypoints.length; iii++) {
-							// vielleicht sollte man die ??? Wegpunkte in die Nähe des Geocaches legen => Man hätte sie auf dem Gerät!
-							if (geocache.additionalWaypoints[iii].coordinates != "???") {
-								wptStrArray.push(getWaypointsGPXFromGeocache(geocache.additionalWaypoints[iii], geocache));
-							}
-						}
-					}
-				} // pm only check
-
-			} else { // costum marker check
-				wptStrArray.push(getGPXfromMarker(currentTour.geocaches[i]));
-
-				//~ var dom = parseXml(getGPXfromMarker(currentTour.geocaches[i]),"text/xml");
-				//~ var waypoint = dom.getElementsByTagName('wpt')[0];
-				//~ gpxElement.appendChild(waypoint);
-			}
-			setProgress(i, currentTour.geocaches.length, document);
-
-		} // itertion end
-		//~ var str = new XMLSerializer().serializeToString(gpxDom);
-
-		var str = gpxHeader;
-
-		str = str.replace(new RegExp("##GEOCACHES##", "g"), gcStrArray.join("\n"))
-			.replace(new RegExp("##WAYPOINTS##", "g"), wptStrArray.join("\n"))
-			.replace(new RegExp("##MINLAT##", "g"), minLat)
-			.replace(new RegExp("##MINLON##", "g"), minLon)
-			.replace(new RegExp("##MAXLAT##", "g"), maxLat)
-			.replace(new RegExp("##MAXLON##", "g"), maxLon);
-		//~ getKäse();
-		return str;
+				}));
+			})(currentTour.geocaches[i]);
+		}
+		
+		return new Promise(function (resolve, reject) {
+			Promise.all(promises).then(function () {
+				log('resolved all');
+				resolve(
+						gpxHeader.replace(/##GEOCACHES##/g, cache_strings.join("\n"))
+						.replace(/##WAYPOINTS##/g, waypoint_strings.join("\n"))
+						.replace(/##MINLAT##/g, minLat)
+						.replace(/##MINLON##/g, minLon)
+						.replace(/##MAXLAT##/g, maxLat)
+						.replace(/##MAXLON##/g, maxLon)
+						);
+			}, reject);
+		});
 	}
-
+	
 	function setLanguage(l) {
 		return function () {
 			GM_setValue('language', l);
@@ -10401,8 +9145,8 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 		},
 		tq_filter = JSON.parse(GM_getValue('tq_specialFilter', '{}'));
 
-		// Begin, f�r Umstellung des Filters
-		// => Kann bei �bern�chster Version wieder entfernt werden
+		// Begin, fï¿½r Umstellung des Filters
+		// => Kann bei ï¿½bernï¿½chster Version wieder entfernt werden
 		if (tq_filter["is not a PM cache"]) {
 			tq_filter["pm"] = "not";
 		}
@@ -11091,25 +9835,6 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 
 	// main
 	(function () {
-
-		// test for gecko-version >= 1.9.2 (firefox >= 3.6)
-		// http://docs.jquery.com/Browser_compatibility#About_Browser_Compatibility
-		// http://de.wikipedia.org/wiki/Firefox#Wichtige_Versionen (Gecko Version)
-		if ($.browser.mozilla) {
-			var arrV = $.browser.version.split('.'),
-			majorN = parseInt(((arrV[0]) ? arrV[0] : 0), 10),
-			minorN = parseInt(((arrV[1]) ? arrV[1] : 0), 10),
-			buildN = parseInt(((arrV[2]) ? arrV[2] : 0), 10);
-
-			if (!((majorN >= 2) || // >= FF 4
-					(majorN === 1 && minorN === 9 && buildN === 2) // = FF 3.6.xx
-				)) {
-				alert("Sorry, but you are running 'Firefox " + $.browser.version +
-					"' which is not supported anymore.\nPlease update to 'Firefox 3.6' or above to use GCTour!");
-			}
-			//else { alert("okay: " + $.browser.version); }
-		}
-
 		if (isOpera) {
 			// wait until document is loaded and init the core components (first tour, current tour)
 			window.addEventListener('DOMContentLoaded', function () {
@@ -11120,12 +9845,6 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 			// init the core components (first tour, current tour)
 			initCore();
 			init();
-		}
-
-		//Opera has an autoupdate function
-		if (!isOpera) {
-			// check for updates: use Greasemonkey autoupdate instead
-			//update();
 		}
 
 	})();
