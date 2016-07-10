@@ -1,8 +1,13 @@
 GC Tour - Changelog
 ===================
 
+version 3.1.1:
+ * changed links in footer
+ * rewrote README
+ * removed contact form, use GitHub if you need to get in touch
+
 version 3.1:
-* MISC: moved language strings to dedicated json files
+ * MISC: moved language strings to dedicated json files
   
 version 3.0:
  * FIXED: send2cgeo working
@@ -14,7 +19,7 @@ version 3.0:
 https://gist.github.com/DieBatzen/5814dc7368c1034470c8
 
 version 2.3.14271, revision 8
-  * FIXED: display of last 4 logs in print preview is now independent of max. number of logs
+ * FIXED: display of last 4 logs in print preview is now independent of max. number of logs
  * MISC: option "all" in Settings - Printview - Number of logs... disabled (didn't work anyway)
  * MISC: some code review
 

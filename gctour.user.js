@@ -2898,17 +2898,6 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 				click : function () {
 					openSettingsDialog();
 				}
-			}),
-
-			// sendMessageButton
-			$('<img>', {
-				'class' : 'tourImage',
-				src : $.gctour.img.sendMessage,
-				title : $.gctour.lang('dlg.sendMessage.caption'),
-				alt : $.gctour.lang('dlg.sendMessage.caption'),
-				click : function () {
-					sendMessageDialog();
-				}
 			}));
 
 		var $header = $("<div>", {
@@ -2942,9 +2931,9 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 				"css" : {
 					position : "absolute",
 					bottom : 0,
-					"font-size" : "75%",
+					"font-size" : "85%",
 					width : "100%",
-					height : "28"
+					height : "3em"
 				},
 				"html" :
 				$("<div>", {
@@ -2953,47 +2942,34 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 					}
 				}).append(
 					$("<a>", {
-						"css" : {
-							'padding-left' : 5
+						css : {
+							'padding-left' : "5px"
+						},
+						href : 'https://github.com/Rocka84/GCTour/',
+						title : 'https://github.com/Rocka84/GCTour/',
+						text : 'GitHub',
+						target:'_blank'
+					})).append(
+					$("<br />")).append(
+					$("<a>", {
+						css : {
+							'padding-left' : "5px"
 						},
 						href : 'http://gctour.madd.in',
-						title : 'http://gctour.madd.in',
-						text : 'http://gctour.madd.in'
-					})
-					.click(function () {
-						window.open(this.href);
-						return false;
+						text : 'Original by madd.in',
+						target:'_blank'
 					})).append(
-					$("<div>", {
-						"css" : {
-							'float' : 'right',
-							'margin-right' : 5
+					$("<span>", {
+						css : {
+							float : 'right',
+							'margin-right' : "5px"
 						},
-						"html" : "v " + VERSION + "." + BUILD
+						html : "v " + VERSION
 					})).append(
 					$("<div>", {
 						"css" : {
-							'width' : '100%'
+							clear : 'both'
 						}
-					})).append(
-					$("<a>", {
-						"css" : {
-							'padding-left' : 5
-						},
-						href : 'https://gist.github.com/DieBatzen/5814dc7368c1034470c8',
-						title : 'https://gist.github.com/DieBatzen/5814dc7368c1034470c8',
-						text : 'https://gist.github.com'
-					})
-					.click(function () {
-						window.open(this.href);
-						return false;
-					})).append(
-					$("<div>", {
-						"css" : {
-							'float' : 'right',
-							'margin-right' : 5
-						},
-						"html" : "revision " + REVISION
 					}))
 			});
 
@@ -3764,24 +3740,6 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 	function openSettingsDialog() {
 		var settings = new Settings();
 		settings.show();
-	}
-
-	function sendMessageDialog() {
-		if (isLogedIn()) {
-			var overLay = getOverlay({
-					caption : $.gctour.lang('dlg.sendMessage.caption'),
-					minimized : true
-				});
-
-			overLay.innerHTML = '<form style="clear:both" method="POST" action="' + GCTOUR_HOST + '/mail/gccom">' +
-				$.gctour.lang('dlg.sendMessage.content') + '<br/>' +
-				'<input type="hidden" name="redir" value=' + window.location + '>' +
-				'<input type="hidden" name="user" value=' + userName + '>' +
-				'<textarea rows="10" style="width:99%" name="message"></textarea>' +
-				'<br/>' + $.gctour.lang('dlg.sendMessage.response') + '<input type="text" name="responsemail"><br/>' +
-				'<div class="dialogFooter"><input style="background-image:url(' + $.gctour.img.sendMessage + ')" type="submit" name="send" value="' + $.gctour.lang('dlg.sendMessage.submit') + '"></input></div>' +
-				'</form>';
-		}
 	}
 
 	function populateTours() {
