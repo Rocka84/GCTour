@@ -1,22 +1,23 @@
-GC Tour - Changelog
-===================
+GC Tour NG - Changelog
+======================
 
-version 3.1.1:
+version 1.2.0:
  * changed links in footer
  * rewrote README
  * removed contact form, use GitHub if you need to get in touch
 
-version 3.1:
+version 1.1.0:
  * MISC: moved language strings to dedicated json files
   
-version 3.0:
+version 1.0.0:
  * FIXED: send2cgeo working
  * FIXED: Cache downloads in Chrome
  * MISC: reimplemented some synchronus request as Promises (Chrome/Tampermonkey doesn't allow synchronous requests)
  * NEW: save GPX-file directly via JS (no request to madd.in needed)
 
 
-https://gist.github.com/DieBatzen/5814dc7368c1034470c8
+
+# Forked from "GC Tour" @ https://gist.github.com/DieBatzen/5814dc7368c1034470c8
 
 version 2.3.14271, revision 8
  * FIXED: display of last 4 logs in print preview is now independent of max. number of logs
