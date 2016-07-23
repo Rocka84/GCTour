@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         GC Tour NG
+// @name         GCTourNG
 // @namespace    gc.rocka84
-// @version      1.2.0
+// @version      1.2.1
 // @description  Cachetour planing made easy. Pick some Caches, sort the list and print it out. Free for all users of geocaching.com!
 // @run-at       document-end
 // @include      http*://www.geocaching.com/*
@@ -69,8 +69,7 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 	// ... } = end of GCTourNG-Script
 
 	// globals
-	var
-	VERSION = "1.2.0", // will be checked once a day
+	var	VERSION = "1.2.1", // will be checked once a day
 	SCRIPTID = 'gctourng',
 	DEBUG_MODE = false,
 	GCTOURNG_HOST = 'http://gctour.madd.in',
@@ -86,7 +85,8 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 	// is jQuery und UI geladen
 	isjQuery = (
 		(typeof $ !== "undefined") && (typeof $ === "function") &&
-		(typeof $.fn === "object") && (typeof $.ui === "object")),
+		(typeof $.fn === "object") && (typeof $.ui === "object")
+	),
 
 	// const isFF = (((isjQuery === true) && $.browser.mozilla) || (typeof ???? !== "undefined")),
 	isOpera = (((isjQuery === true) && $.browser.opera) || (typeof opera !== "undefined")),
@@ -375,16 +375,16 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 		$.gctourng = $.gctour || {};
 
 		// init language object
-		$.gctourng.i18n = $.gctour.i18n || {};
+		$.gctourng.i18n = $.gctourng.i18n || {};
 
 		// set default Language
 		$.gctourng.defaultLang = 'en';
 
 		// init current language = default language
-		$.gctourng.currentLang = $.gctour.defaultLang;
+		$.gctourng.currentLang = $.gctourng.defaultLang;
 
 		// +jquery ui dialog (default setting)
-		$.gctourng.dialog = $.gctour.dialog || {};
+		$.gctourng.dialog = $.gctourng.dialog || {};
 
 		// default dialogs (http://api.jqueryui.com/dialog/)
 		$.extend($.gctourng.dialog, {
@@ -446,8 +446,6 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 					maxWidth : 1000,
 					maxHeight : 700,
 					title : 'GCTourNG',
-					closeText : 'Schliessen',
-					show : 'drop', // blind, drop, scale
 					dialogClass : 'gct gct_dialog',
 					open : function (event, ui) {
 						//$(".ui-dialog-titlebar-close").hide();
@@ -486,8 +484,6 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 					maxWidth : 1000,
 					maxHeight : 700,
 					title : 'GCTourNG Info',
-					closeText : 'Schliessen',
-					show : 'drop', // blind, drop, scale
 					dialogClass : 'gct gct_dialog',
 					close : function (event, ui) {
 						$(this).dialog("destroy"); // diesen Dialog killen, weil immer ein neuer erstellt wird
@@ -626,7 +622,7 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 			}else if (def_trans){
 				trans = def_trans;
 			}else if (DEBUG_MODE) {
-				trans="NO TRANSLATION"
+				trans="NO TRANSLATION";
 			}
 
 			// debug info current language
@@ -1161,7 +1157,7 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 				"}" +
 				 +
 				"")
-			.replace("##gctourngLogo##", $.gctour.img.gctourLogo)
+			.replace("##gctourngLogo##", $.gctourng.img.gctourngLogo)
 			.replace("##dialogMaskImage##", $.gctourng.img.dialogMask)
 			.replace("##tabBgImage##", $.gctourng.img.tabBg));
 
@@ -1889,7 +1885,7 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 		// first filter blacklist
 		// process "add to your GCTourNG"-link from gctour.madd.in
 		if (document.URL.search("webcode") >= 0) {
-			document.title = "GCTourNG
+			document.title = "GCTourNG";
 			document.getElementsByTagName('body')[0].innerHTML = "<div align='center'><a href='http://www.geocaching.com'><img border='0' src='http://madd.in/icon.png'/></a></div>";
 			downloadTourFunction(document.URL.split("webcode/")[1]);
 
@@ -2144,7 +2140,7 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 				function (index, text) {
 				var tmpAddToTour = '{{#if $ctx.userIsLoggedIn() }}' +
 					'<a class="lnk" id="attKnopf" href="javascript:add2tour();">' +
-					'<img src="' + $.gctourng.img.addToTour + '">&nbsp;<span>' + $.gctour.lang('addToTour') + '</span>' +
+					'<img src="' + $.gctourng.img.addToTour + '">&nbsp;<span>' + $.gctourng.lang('addToTour') + '</span>' +
 					'</a>';
 				return text.replace(/\{\{\#if \$ctx.userIsLoggedIn\(\) \}\}/g, tmpAddToTour);
 			});
@@ -2234,7 +2230,7 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 						"cursor" : "pointer",
 						"background-color" : "#EEE"
 					},
-					"html" : "<img src='" + $.gctourng.img.addToTour + "'/>&nbsp;" + $.gctour.lang('addToCurrentTour')
+					"html" : "<img src='" + $.gctourng.img.addToTour + "'/>&nbsp;" + $.gctourng.lang('addToCurrentTour')
 				})
 				.bind('click', {
 					bLs : bookmarkLines,
@@ -2252,7 +2248,7 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 						"cursor" : "pointer",
 						"background-color" : "#EEE"
 					},
-					"html" : "<img src='" + $.gctourng.img.newTour + "'/>&nbsp;+&nbsp;<img src='" + $.gctour.img.addToTour + "'/>&nbsp;" + $.gctour.lang('addToNewTour')
+					"html" : "<img src='" + $.gctourng.img.newTour + "'/>&nbsp;+&nbsp;<img src='" + $.gctourng.img.addToTour + "'/>&nbsp;" + $.gctourng.lang('addToNewTour')
 				})
 				.bind('click', {
 					bLs : bookmarkLines,
@@ -2279,7 +2275,7 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 						"cursor" : "pointer",
 						"background-color" : "#EEE"
 					},
-					"html" : "<img src='" + $.gctourng.img.addToTour + "'/>&nbsp;" + $.gctour.lang('addToCurrentTour')
+					"html" : "<img src='" + $.gctourng.img.addToTour + "'/>&nbsp;" + $.gctourng.lang('addToCurrentTour')
 				})
 				.bind('click', {
 					bLs : bookmarkLines,
@@ -2297,7 +2293,7 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 						"cursor" : "pointer",
 						"background-color" : "#EEE"
 					},
-					"html" : "<img src='" + $.gctourng.img.newTour + "'/>&nbsp;+&nbsp;<img src='" + $.gctour.img.addToTour + "'/>&nbsp;" + $.gctour.lang('addToNewTour')
+					"html" : "<img src='" + $.gctourng.img.newTour + "'/>&nbsp;+&nbsp;<img src='" + $.gctourng.img.addToTour + "'/>&nbsp;" + $.gctourng.lang('addToNewTour')
 				})
 				.bind('click', {
 					bLs : bookmarkLines,
@@ -2375,7 +2371,7 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 						"cursor" : "pointer",
 						"background-color" : "#EEE"
 					},
-					"html" : "<img src='" + $.gctourng.img.addToTour + "'/>&nbsp;" + $.gctour.lang('addToCurrentTour')
+					"html" : "<img src='" + $.gctourng.img.addToTour + "'/>&nbsp;" + $.gctourng.lang('addToCurrentTour')
 				})
 				.bind('click', {
 					checkedOnly : false,
@@ -2392,7 +2388,7 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 						"cursor" : "pointer",
 						"background-color" : "#EEE"
 					},
-					"html" : "<img src='" + $.gctourng.img.newTour + "'/>&nbsp;+&nbsp;<img src='" + $.gctour.img.addToTour + "'/>&nbsp;" + $.gctour.lang('addToNewTour')
+					"html" : "<img src='" + $.gctourng.img.newTour + "'/>&nbsp;+&nbsp;<img src='" + $.gctourng.img.addToTour + "'/>&nbsp;" + $.gctourng.lang('addToNewTour')
 				})
 				.bind('click', {
 					checkedOnly : false,
@@ -2437,7 +2433,7 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 						"cursor" : "pointer",
 						"background-color" : "#EEE"
 					},
-					"html" : "<img src='" + $.gctourng.img.addToTour + "'/>&nbsp;" + $.gctour.lang('addToCurrentTour')
+					"html" : "<img src='" + $.gctourng.img.addToTour + "'/>&nbsp;" + $.gctourng.lang('addToCurrentTour')
 				})
 				.bind('click', {
 					checkedOnly : true,
@@ -2454,7 +2450,7 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 						"cursor" : "pointer",
 						"background-color" : "#EEE"
 					},
-					"html" : "<img src='" + $.gctourng.img.newTour + "'/>&nbsp;+&nbsp;<img src='" + $.gctour.img.addToTour + "'/>&nbsp;" + $.gctour.lang('addToNewTour')
+					"html" : "<img src='" + $.gctourng.img.newTour + "'/>&nbsp;+&nbsp;<img src='" + $.gctourng.img.addToTour + "'/>&nbsp;" + $.gctourng.lang('addToNewTour')
 				})
 				.bind('click', {
 					checkedOnly : true,
@@ -2517,7 +2513,7 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 			append(gcTourFieldset, div_element);
 
 			gcTourFieldset.setAttribute('class', 'dialogFooter');
-			gcTourFieldset.innerHTML = "<legend class='note' style='background:url(\"" + $.gctourng.img.gctourLogoSmall + "\") no-repeat scroll 0 0 transparent;padding-left:20px;'>GCTourNG</legend>";
+			gcTourFieldset.innerHTML = "<legend class='note' style='background:url(\"" + $.gctourng.img.gctourngLogoSmall + "\") no-repeat scroll 0 0 transparent;padding-left:20px;'>GCTourNG</legend>";
 
 			var newButton = createElement('input', {
 					type : "button",
@@ -2531,7 +2527,7 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 			//~ var newButton = document.createElement("button");
 			//~ newButton.name = 'btnGPXDL';
 			//~ newButton.type = 'submit';
-			//~ newButton.innerHTML = "<img src='"+$.gctourng.img.addToTour+"'/>&nbsp;"+$.gctour.lang('addToTour');
+			//~ newButton.innerHTML = "<img src='"+$.gctourng.img.addToTour+"'/>&nbsp;"+$.gctourng.lang('addToTour');
 			//~ newButton.id = 'btnGPXDL';
 
 			// locate the values and save it
@@ -2604,7 +2600,7 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 			"class" : "header gctourng-grand-default",
 			"html" :
 			$("<img>", {
-				"src" : $.gctourng.img.gctourLogoSmall
+				"src" : $.gctourng.img.gctourngLogoSmall
 			})
 		})
 		.hover(
@@ -2893,12 +2889,12 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 					'cursor' : "pointer",
 					'-moz-user-select' : "none"
 				},
-				"html" : "<img src='" + $.gctourng.img.gctourLogo + "' style='margin: 6px 0 0 6px;'/>" +
-				"<img id='gcTourPin' style='float:right;margin: 6px 2px 0 0;' src='" + ((sticky) ? $.gctourng.img.pinned : $.gctour.img.pin) + "'>",
+				"html" : "<img src='" + $.gctourng.img.gctourngLogo + "' style='margin: 6px 0 0 6px;'/>" +
+				"<img id='gcTourPin' style='float:right;margin: 6px 2px 0 0;' src='" + ((sticky) ? $.gctourng.img.pinned : $.gctourng.img.pin) + "'>",
 				click : function (e) {
 					sticky = !sticky;
 					GM_setValue('sticky', sticky);
-					$("img#gcTourPin").attr("src", ((sticky) ? $.gctourng.img.pinned : $.gctour.img.pin));
+					$("img#gcTourPin").attr("src", ((sticky) ? $.gctourng.img.pinned : $.gctourng.img.pin));
 				}
 			})
 			.hover(
@@ -3590,7 +3586,7 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 
 						closeOverlay();
 
-						var codeString = $.gctourng.lang('tourUploaded1') + currentTour.webcode + $.gctour.lang('tourUploaded2');
+						var codeString = $.gctourng.lang('tourUploaded1') + currentTour.webcode + $.gctourng.lang('tourUploaded2');
 						alert(codeString);
 					}
 				} catch (e) {
@@ -3954,7 +3950,7 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 					saveCurrentTour();
 
 					log("Download of an old online tour successfull: " + onlineTour.id + " ; " + onlineTour.name);
-					alert("tour '" + onlineTour.name + "'\n" + $.gctourng.lang('webcodesuccess') + "\n" + $.gctour.lang('webcodeOld'));
+					alert("tour '" + onlineTour.name + "'\n" + $.gctourng.lang('webcodesuccess') + "\n" + $.gctourng.lang('webcodeOld'));
 					loadTour(onlineTour.id)();
 
 				} else {
@@ -4325,7 +4321,7 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 		append(dialogHead, dialogBody);
 		dialogHead.style.backgroundColor = background_color;
 
-		var icon = "<img style='float:left;position:relative;top:-3px;' src='" + $.gctourng.img.gctourLogo + "'>";
+		var icon = "<img style='float:left;position:relative;top:-3px;' src='" + $.gctourng.img.gctourngLogo + "'>";
 		dialogHead.innerHTML = icon + caption;
 
 		closeButton = createElement('img', {
@@ -4540,7 +4536,7 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 		.html("<b>" + (i + 1) + "/" + count + "</b>");
 	}
 
-	$.gctourng.notification = $.gctour.notification || {};
+	$.gctourng.notification = $.gctourng.notification || {};
 
 	$.gctourng.notification.init = function () {
 
@@ -4823,7 +4819,7 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 		anTable.appendChild(tr);
 		td = document.createElement('td');
 		tr.appendChild(td);
-		td.innerHTML = $.gctourng.lang('markerContent') + '<br/><div style="font-size:xx-small">(' + $.gctour.lang('markerContentHint') + ')</div>';
+		td.innerHTML = $.gctourng.lang('markerContent') + '<br/><div style="font-size:xx-small">(' + $.gctourng.lang('markerContentHint') + ')</div>';
 
 		td = document.createElement('td');
 		tr.appendChild(td);
@@ -5325,7 +5321,7 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 		cordsInput.addEventListener('paste', checkMarkerCoord(cordsInput), false);
 
 		exampleCoords = document.createElement('div');
-		exampleCoords.innerHTML = "<small>" + $.gctourng.lang('example') + " " + $.gctour.lang('exampleCoords') + "</small>";
+		exampleCoords.innerHTML = "<small>" + $.gctourng.lang('example') + " " + $.gctourng.lang('exampleCoords') + "</small>";
 
 		td.appendChild(exampleCoords);
 
@@ -6154,13 +6150,13 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 
 				.append(
 					$("<legend/>").html($.gctourng.lang('printview'))
-					.css('background', "url(\"" + $.gctourng.img.gctourLogoSmall + "\") no-repeat scroll 0 0 transparent")
+					.css('background', "url(\"" + $.gctourng.img.gctourngLogoSmall + "\") no-repeat scroll 0 0 transparent")
 					.css('padding-left', '20px'),
 
-					$("<input/>").attr("type", "input").attr("value", $.gctourng.lang('print')).css("background-image", "url(" + $.gctour.img.printer + ")").click(function () {
+					$("<input/>").attr("type", "input").attr("value", $.gctourng.lang('print')).css("background-image", "url(" + $.gctourng.img.printer + ")").click(function () {
 						self.print()
 					}),
-					$("<input/>").attr("type", "input").attr("value", $.gctourng.lang('close')).css("background-image", "url(" + $.gctour.img.closebutton + ")").click(function () {
+					$("<input/>").attr("type", "input").attr("value", $.gctourng.lang('close')).css("background-image", "url(" + $.gctourng.img.closebutton + ")").click(function () {
 						location.reload();
 					})).appendTo($(body));
 
@@ -8947,7 +8943,7 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 					"margin-left" : 10,
 					"font-size" : 12
 				},
-				html : "<img id='locateImage' src='" + $.gctourng.img.locateMe + "'><span style='vertical-align:top;margin-left:3px;font-weight:bold'>" + $.gctour.lang('findMe') + "</span>"
+				html : "<img id='locateImage' src='" + $.gctourng.img.locateMe + "'><span style='vertical-align:top;margin-left:3px;font-weight:bold'>" + $.gctourng.lang('findMe') + "</span>"
 			})
 
 			.click(function () {
@@ -9055,7 +9051,7 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 
 		var coordsLabel = createElement('div');
 		append(coordsLabel, coordsDiv);
-		coordsLabel.innerHTML = $.gctourng.lang('markerCoordinate') + ": <b id='markerCoordsPreview'>???</b>&nbsp;&nbsp;&nbsp;" + $.gctour.lang('autoTour.radius') + ": <b id='markerRadiusPreview'>???km</b>";
+		coordsLabel.innerHTML = $.gctourng.lang('markerCoordinate') + ": <b id='markerCoordsPreview'>???</b>&nbsp;&nbsp;&nbsp;" + $.gctourng.lang('autoTour.radius') + ": <b id='markerRadiusPreview'>???km</b>";
 
 		// previewMap
 		var staticGMap = createElement('div');
@@ -9329,7 +9325,7 @@ if (window.top !== window.self && window.location.href.indexOf("/seek/sendtogps.
 		}
 
 		if (updateNode) {
-			var confirmString = 'There is a new version of GcTour.\n\t' + VERSION + ' -> ' + updateNode.getAttribute('number') + '\nChanges:\n';
+			var confirmString = 'There is a new version of GCTourNG.\n\t' + VERSION + ' -> ' + updateNode.getAttribute('number') + '\nChanges:\n';
 
 			var changes = updateNode.getElementsByTagName('change');
 			for (j = 0; j < changes.length; j++) {
